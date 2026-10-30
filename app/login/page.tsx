@@ -20,14 +20,29 @@ export default function Login() {
   useEffect(() => { sb.rpc('open_stores').then(({ data }) => setStores(data ?? [])) }, [])
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value })
   const bad = (m: string) => { setGood(false); setMsg(m) }
+  const showFetchError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : ''
+    if (!/failed to fetch|fetch failed|network request failed/i.test(message)) return false
+    bad('Could not reach Supabase. Check your Supabase URL and publishable key, then restart the app and try again.')
+    return true
+  }
 
   async function submit() {
     setMsg('')
     const email = f.email.trim().toLowerCase()
     if (!emailOk(email)) return bad('Enter a valid email address, like name@company.com.')
     if (mode === 'login') {
-      const { error } = await sb.auth.signInWithPassword({ email, password: f.pw })
-      if (error) return bad(error.message.includes('not confirmed') ? 'Confirm your email first. Check your inbox.' : 'Email or password is incorrect.')
+      let error
+      try {
+        ({ error } = await sb.auth.signInWithPassword({ email, password: f.pw }))
+      } catch (error) {
+        if (showFetchError(error)) return
+        throw error
+      }
+      if (error) {
+        if (showFetchError(error)) return
+        return bad(error.message.includes('not confirmed') ? 'Confirm your email first. Check your inbox.' : 'Email or password is incorrect.')
+      }
       location.href = '/'
       return
     }
@@ -35,14 +50,31 @@ export default function Login() {
     const e = pwErr(f.pw); if (e) return bad(e)
     if (f.pw !== f.pw2) return bad('Passwords do not match.')
     if (f.role === 'manager' && !f.store) return bad('Choose your store.')
-    const { error } = await sb.auth.signUp({
-      email, password: f.pw,
-      options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: f.role, store_id: f.role === 'manager' ? f.store : '' } },
-    })
-    if (error) return bad(error.message)
+    let error
+    try {
+      ({ error } = await sb.auth.signUp({
+        email, password: f.pw,
+        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: f.role, store_id: f.role === 'manager' ? f.store : '' } },
+      }))
+    } catch (error) {
+      if (showFetchError(error)) return
+      throw error
+    }
+    if (error) {
+      if (showFetchError(error)) return
+      return bad(error.message)
+    }
     setGood(true); setMsg('Check your inbox and confirm your email, then log in.')
   }
-  const google = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/auth/callback' } })
+  const google = async () => {
+    setMsg('')
+    try {
+      const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/auth/callback' } })
+      if (error && !showFetchError(error)) bad(error.message)
+    } catch (error) {
+      if (!showFetchError(error)) throw error
+    }
+  }
   const signup = mode === 'signup'
 
   return (

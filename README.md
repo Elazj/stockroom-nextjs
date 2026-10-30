@@ -14,6 +14,10 @@ Google sign-in, live dashboards, customer supply sheets with CSV download, repor
 6. Copy `.env.example` to `.env.local` and add your project URL and anon (publishable) key.
 7. `npm install` then `npm run dev` and open http://localhost:3000.
 
+If login shows a connection error, verify that `.env.local` contains the Supabase project URL and publishable key from **Project Settings > API**, then restart `npm run dev`. For Vercel, add both as environment variables and redeploy. The URL must be the project URL (for example, `https://your-project.supabase.co`), not the dashboard URL.
+
+For an existing project, run `supabase/migration-003.sql` once in the Supabase SQL editor to enable the admin reset action.
+
 ## Deploy to Vercel
 Push to GitHub, import the repo in Vercel, add the same two environment variables, deploy,
 then add your Vercel address to the Supabase redirect URLs (step 5).

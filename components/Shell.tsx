@@ -26,12 +26,17 @@ function ResetButton() {
   async function go() {
     if (text.trim() !== 'RESET') return toast('Type RESET to confirm.')
     setBusy(true)
-    const { error } = await supabaseBrowser().rpc('reset_all_data', { wipe_accounts: wipe })
-    setBusy(false)
-    if (error) return toast(error.message)
-    toast('Everything has been cleared')
-    setOpen(false); setText(''); setWipe(false)
-    setTimeout(() => location.reload(), 600)
+    try {
+      const { error } = await supabaseBrowser().rpc('reset_all_data', { wipe_accounts: wipe })
+      if (error) return toast(error.message)
+      toast('Everything has been cleared')
+      setOpen(false); setText(''); setWipe(false)
+      setTimeout(() => location.reload(), 600)
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not reset data.')
+    } finally {
+      setBusy(false)
+    }
   }
   return (<>
     <button className="btn ghost sm" onClick={() => setOpen(true)}>Reset all data</button>

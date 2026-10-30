@@ -136,6 +136,8 @@ begin
   delete from stores;
   if wipe_accounts then delete from auth.users where id <> auth.uid(); end if;
 end $$;
+revoke all on function reset_all_data(boolean) from public, anon;
+grant execute on function reset_all_data(boolean) to authenticated;
 
 -- Row level security
 alter table stores enable row level security;       alter table profiles enable row level security;
