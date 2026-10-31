@@ -19,7 +19,7 @@ export default function AdminReports() {
     {d.reports.length ? d.reports.map((r: any) => (
       <div key={r.id} className="panel rep">
         <div className="row"><b>{r.subject}</b><span className={'chip' + (r.resolved ? '' : ' low')}>{r.resolved ? 'Resolved' : 'Open'}</span></div>
-        <div className="mute" style={{ fontSize: 13 }}>{r.profiles?.full_name}, {sm.get(r.profiles?.store_id) ?? 'No store'} · {r.category} · {fmtT(r.created_at)}</div>
+        <div className="mute text-[13px]">{r.profiles?.full_name}, {sm.get(r.profiles?.store_id) ?? 'No store'} · {r.category} · {fmtT(r.created_at)}</div>
         <p>{r.message}</p>
         <button className="btn ghost sm" onClick={() => toggle(r)}>{r.resolved ? 'Reopen' : 'Mark resolved'}</button>
       </div>

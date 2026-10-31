@@ -1,6 +1,6 @@
 # Stockroom: Next.js + Supabase
 
-Multi-store stock management. Admin and store manager roles, email sign-up with confirmation, Google sign-in,
+Multi-store stock management styled with Tailwind CSS. Admin and store manager roles, email sign-up with confirmation, Google sign-in,
 live dashboards with Chart.js, customer supply sheets with CSV download, reports, settings, dark/light theme.
 
 ## Set up (new Supabase project)

@@ -15,7 +15,7 @@ export default function JoinStore({ stores }: { stores: { id: string; name: stri
     router.refresh()
   }
   return (
-    <div className="panel" style={{ maxWidth: 460 }}>
+    <div className="panel max-w-[460px]">
       <h1>Choose your store</h1>
       <p className="mute">Your account is not linked to a store yet. Pick yours to start. Each store can have up to 3 accounts.</p>
       <label>Store

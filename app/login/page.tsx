@@ -67,7 +67,7 @@ export default function Login() {
       <div className="theme-fab"><ThemeToggle /></div>
       <div className="panel card">
         <div className="authlogo"><img src="/logo-icon.svg" alt="" width={44} height={44} /><h1>Stockroom</h1></div>
-        <p className="mute" style={{ margin: 0 }}>Stock balances for every store, in one place.</p>
+        <p className="mute m-0">Stock balances for every store, in one place.</p>
         {conn === 'missing' && <div className="banner" role="alert">The Supabase address or key is missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (in .env.local, or in Vercel then redeploy).</div>}
         {conn === 'unreachable' && <div className="banner" role="alert">Cannot reach Supabase at <b>{host}</b>. Check that: the project is not paused (open the Supabase dashboard and Restore it); the URL has no typo, quotes or spaces; no ad blocker or firewall blocks supabase.co; and on Vercel you redeployed after setting the variables.</div>}
         {conn === 'badkey' && <div className="banner" role="alert">Supabase rejected the key. Copy the anon (or publishable) key from Project Settings, API, then update NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.</div>}
@@ -88,7 +88,7 @@ export default function Login() {
         </>)}
         <label>Password<input type="password" value={f.pw} onChange={set('pw')} autoComplete={signup ? 'new-password' : 'current-password'} /></label>
         {signup && <>
-          <p className="mute" style={{ fontSize: 12, margin: '-6px 0 10px' }}>At least 8 characters with upper and lower case letters, a number and a symbol.</p>
+          <p className="mute -mt-1.5 mb-2.5 text-xs">At least 8 characters with upper and lower case letters, a number and a symbol.</p>
           <label>Confirm password<input type="password" value={f.pw2} onChange={set('pw2')} autoComplete="new-password" /></label></>}
         <p role="alert" className={good ? 'err ok' : 'err'}>{msg}</p>
         <button className="btn" disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>

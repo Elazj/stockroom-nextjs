@@ -40,7 +40,7 @@ export default function AdminDashboard() {
       <div><h1>Dashboard</h1><p>Live overview of every store. Entries from store managers appear here automatically.</p></div>
       <span className="live-pill"><i />Live</span>
     </div>
-    {!d.stores.length || !B.length ? <div className="panel" style={{ marginBottom: 16 }}><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
+    {!d.stores.length || !B.length ? <div className="panel mb-4"><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
     <div className="kpis">
       <Kpi icon="store" label="Active stores" value={d.stores.filter((s: any) => s.active).length} />
       <Kpi icon="box" label="Products" value={P.length} />
@@ -51,29 +51,29 @@ export default function AdminDashboard() {
       <Kpi icon="archive" label="Remaining in stores" value={sum(B, (b) => Number(b.remaining))} />
       <Kpi icon="flag" label="Open reports" value={d.open} tone={d.open ? 'bad' : undefined} />
     </div>
-    <div className="grid wide">
+    <div className="content-grid wide">
       <div className="panel"><h2>Supplied and lost, last 7 days</h2>
         <SupplyLossChart labels={labels} supplied={days.map((x) => per(d.rows, x))} lost={days.map((x) => per(d.losses, x))} /></div>
       <div className="panel"><h2>Stock health</h2>
         <StatusDonut ok={lv.filter((x) => x === 'ok').length} low={lv.filter((x) => x === 'low').length} out={lv.filter((x) => x === 'out').length} /></div>
     </div>
-    <div className="grid">
+    <div className="content-grid">
       <div className="panel"><h2>Remaining by store</h2><StoreBars labels={byStore.map((x: any) => x.name)} values={byStore.map((x: any) => x.u)} /></div>
       <div className="panel"><h2>Top products supplied</h2><TopBars labels={top.map(([n]) => n)} values={top.map(([, v]) => v)} /></div>
     </div>
-    <div className="grid">
+    <div className="content-grid">
       <div className="panel"><h2>Needs restocking</h2>
         {need.length ? <div className="wrap"><table><thead><tr><th>Store</th><th>Product</th><th className="n">Left</th><th /></tr></thead><tbody>
-          {need.map((b) => <tr key={b.supply_id}><td>{sName.get(b.store_id)}</td><td>{pName.get(b.product_id)}</td><td className="n">{b.remaining}</td><td><Chip s={level(Number(b.assigned), Number(b.remaining))} /></td></tr>)}</tbody></table></div> : <p className="mute" style={{ margin: 0 }}>Nothing is low or finished.</p>}
+          {need.map((b) => <tr key={b.supply_id}><td>{sName.get(b.store_id)}</td><td>{pName.get(b.product_id)}</td><td className="n">{b.remaining}</td><td><Chip s={level(Number(b.assigned), Number(b.remaining))} /></td></tr>)}</tbody></table></div> : <p className="mute m-0">Nothing is low or finished.</p>}
       </div>
       <div className="panel"><h2>Latest reports</h2>
         {d.reps.length ? <div className="wrap"><table><thead><tr><th>From</th><th>Subject</th><th /></tr></thead><tbody>
-          {d.reps.map((r: any) => <tr key={r.id}><td>{r.profiles?.full_name}</td><td>{r.subject}</td><td><span className={'chip' + (r.resolved ? '' : ' low')}>{r.resolved ? 'Resolved' : 'Open'}</span></td></tr>)}</tbody></table></div> : <p className="mute" style={{ margin: 0 }}>No reports from managers yet.</p>}
+          {d.reps.map((r: any) => <tr key={r.id}><td>{r.profiles?.full_name}</td><td>{r.subject}</td><td><span className={'chip' + (r.resolved ? '' : ' low')}>{r.resolved ? 'Resolved' : 'Open'}</span></td></tr>)}</tbody></table></div> : <p className="mute m-0">No reports from managers yet.</p>}
       </div>
     </div>
     <div className="panel"><h2>Recent activity</h2>
       {d.log.length ? <div className="wrap"><table><thead><tr><th>When</th><th>By</th><th>Activity</th></tr></thead><tbody>
-        {d.log.map((l: any) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td>{l.profiles?.full_name}</td><td className="w">{l.message}</td></tr>)}</tbody></table></div> : <p className="mute" style={{ margin: 0 }}>No activity yet.</p>}
+      {d.log.map((l: any) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td>{l.profiles?.full_name}</td><td className="w">{l.message}</td></tr>)}</tbody></table></div> : <p className="mute m-0">No activity yet.</p>}
     </div>
   </>)
 }

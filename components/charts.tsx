@@ -58,7 +58,7 @@ const centerText = {
   },
 }
 
-const Empty = ({ text }: { text: string }) => <p className="mute" style={{ margin: 0 }}>{text}</p>
+const Empty = ({ text }: { text: string }) => <p className="mute m-0">{text}</p>
 
 /** Smooth area chart: supplied to customers vs damaged or missing, per day. */
 export function SupplyLossChart({ labels, supplied, lost }: { labels: string[]; supplied: number[]; lost: number[] }) {

@@ -30,7 +30,7 @@ export default function Products() {
           <td>{p.name}</td><td>{p.container_no}</td><td>{p.unit}</td><td className="n">{p.total}</td><td className="n">{p.damaged_offload}</td><td className="n">{p.missing_before_offload}</td>
           <td className="n"><b>{p.net}</b></td><td className="n">{p.alloc}</td><td className="n">{p.free}</td>
           <td><div className="btns"><button className="btn sm" disabled={p.free <= 0} onClick={() => setAddFor(p.id)}>Add to store</button><button className="btn ghost sm" onClick={() => setEdit(p)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(p)}>Delete</button></div></td></tr>)}</tbody>
-      </table></div> : <p className="mute" style={{ margin: 0 }}>No products yet. Choose Create product to record your first container.</p>}
+      </table></div> : <p className="mute m-0">No products yet. Choose Create product to record your first container.</p>}
     </div>
     <ProductDialog open={creating} onClose={() => setCreating(false)} onSaved={reload} />
     <ProductDialog open={!!edit} product={edit ?? undefined} onClose={() => setEdit(null)} onSaved={reload} />

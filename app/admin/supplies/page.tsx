@@ -47,12 +47,12 @@ export default function Supplies() {
           <td className="n">{b.assigned}</td><td className="n">{b.supplied}</td><td className="n">{b.damaged_in_supply}</td><td className="n">{b.missing_in_supply}</td>
           <td className="n"><b>{b.remaining}</b> {pm.get(b.product_id)?.unit}</td><td><Chip s={level(Number(b.assigned), Number(b.remaining))} /></td>
           <td><div className="btns"><button className="btn ghost sm" onClick={() => setSheet(b.supply_id)}>Sheet</button><button className="btn ghost sm" onClick={() => startEdit(b)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(b)}>Remove</button></div></td></tr>)}</tbody>
-      </table></div> : <p className="mute" style={{ margin: 0 }}>{d.bal.length ? 'No supplies match these filters.' : 'Nothing is in a store yet. Create a product under Products, then add it to a store here.'}</p>}
+      </table></div> : <p className="mute m-0">{d.bal.length ? 'No supplies match these filters.' : 'Nothing is in a store yet. Create a product under Products, then add it to a store here.'}</p>}
     </div>
     <SupplyDialog open={adding} products={prodRows} stores={d.stores} onClose={() => setAdding(false)} onSaved={reload} />
     <SupplyDialog open={!!edit} supply={edit ?? undefined} products={prodRows} stores={d.stores} onClose={() => setEdit(null)} onSaved={reload} />
     <Modal open={!!sheet} wide title={sheetRow ? `${pm.get(sheetRow.product_id)?.name ?? 'Sheet'}, ${sm.get(sheetRow.store_id) ?? ''}` : 'Sheet'} onClose={() => setSheet(null)}>
-      {sheet ? <AdminSheet supplyId={sheet} onClose={() => setSheet(null)} /> : null}
+      {sheet ? <AdminSheet key={sheet} supplyId={sheet} onClose={() => setSheet(null)} onOpen={setSheet} /> : null}
     </Modal>
     <Confirm open={!!del} title="Remove from store" label="Remove" onClose={() => setDel(null)}
       text={`Remove ${pm.get(del?.product_id)?.name ?? 'this product'} from ${sm.get(del?.store_id) ?? 'the store'}? Its sheet and every entry are deleted, and the quantity becomes available to assign again.`}

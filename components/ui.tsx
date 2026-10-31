@@ -16,7 +16,7 @@ function ConfirmBody({ text, label, onClose, onConfirm }: { text: string; label:
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   return (<>
-    <p className="mute" style={{ marginTop: 0 }}>{text}</p>
+    <p className="mute mt-0">{text}</p>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot">
       <button className="btn ghost" onClick={onClose}>Cancel</button>

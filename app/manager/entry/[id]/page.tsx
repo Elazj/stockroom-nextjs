@@ -43,16 +43,16 @@ export default function SheetPage() {
 
   return (<>
     <Hd title={`Sheet: ${p.name}`} sub={`${s.stores.name}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}`}>
-      <Link className="btn ghost sm" style={{ textDecoration: 'none' }} href="/manager/entry">All sheets</Link>
+      <Link className="btn ghost sm no-underline" href="/manager/entry">All sheets</Link>
       {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(d)}>Download sheet</button> : null}
     </Hd>
     <div className="panel strip">
       {([[b.assigned, 'Assigned to this store'], [b.supplied, 'Supplied to customers'], [b.damaged_in_supply, 'Damaged in supply'], [b.missing_in_supply, 'Missing in supply'], [b.remaining, 'Remaining in store']] as [number, string][]).map(([v, t]) => <div key={t}><b>{v}</b><span>{t}</span></div>)}
     </div>
     {!s.sheet_started_at ? (
-      <div className="panel"><p style={{ marginTop: 0 }}>This sheet has not been created yet.</p><button className="btn sm" onClick={start}>Create sheet</button></div>
+      <div className="panel"><p className="mt-0">This sheet has not been created yet.</p><button className="btn sm" onClick={start}>Create sheet</button></div>
     ) : (<>
-      <div className="grid">
+      <div className="content-grid">
         <div className="panel"><h2>Record a supply</h2>
           <label>Customer name<input value={r.cust} maxLength={80} onChange={(e) => setR({ ...r, cust: e.target.value })} /></label>
           <label>Supply ID (invoice or sales number)<input value={r.ref} maxLength={40} onChange={(e) => setR({ ...r, ref: e.target.value })} /></label>

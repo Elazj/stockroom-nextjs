@@ -27,9 +27,9 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     onClose()
   }
   return (<>
-    <p className="mute" style={{ marginTop: 0 }}>This permanently deletes every store, product, supply, sheet entry, report and activity record. It cannot be undone.</p>
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <input type="checkbox" style={{ width: 'auto', margin: 0 }} checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all other user accounts
+    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, report and activity record. It cannot be undone.</p>
+    <label className="flex items-center gap-2">
+      <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all other user accounts
     </label>
     <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
     <p className="err" role="alert">{err}</p>
@@ -92,17 +92,17 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
         </dl> : <p className="mute">Loading…</p>}
       </div>
       <div className="panel"><h2>Appearance</h2>
-        <p className="mute" style={{ marginTop: 0 }}>Choose a dark or light look. Your choice is remembered on this device.</p>
+        <p className="mute mt-0">Choose a dark or light look. Your choice is remembered on this device.</p>
         <ThemeToggle />
       </div>
       <div className="panel"><h2>Change password</h2><Password /></div>
       <div className="panel"><h2>Session</h2>
-        <p className="mute" style={{ marginTop: 0 }}>Sign out of Stockroom on this device.</p>
+        <p className="mute mt-0">Sign out of Stockroom on this device.</p>
         <SignOut />
       </div>
       {role === 'admin' ? (
         <div className="panel zone"><h2>Danger zone</h2>
-          <p className="mute" style={{ marginTop: 0 }}>Clear every store, product, supply, sheet and report. Use this to start fresh.</p>
+          <p className="mute mt-0">Clear every store, product, supply, sheet and report. Use this to start fresh.</p>
           <ResetData />
         </div>
       ) : null}

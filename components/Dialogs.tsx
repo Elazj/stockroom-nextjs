@@ -75,7 +75,7 @@ function SupplyForm({ products, stores, supply, preset, onClose, onSaved }: { pr
   }
   if (!supply && !cand.length) return <p className="mute">{products.length ? 'Every product is already fully assigned to stores.' : 'Create a product first.'}</p>
   return (<>
-    {supply ? <p className="mute" style={{ marginTop: 0 }}>{prod?.name}</p> : (<>
+    {supply ? <p className="mute mt-0">{prod?.name}</p> : (<>
       <label>Product<select value={pid} onChange={(e) => pick(e.target.value)}>{cand.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.container_no})</option>)}</select></label>
       <label>Store or warehouse<select value={sid} onChange={(e) => setSid(e.target.value)}>{open.length ? open.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No active stores</option>}</select></label>
     </>)}

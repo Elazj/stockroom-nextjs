@@ -1,4 +1,5 @@
 'use client'
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui'
 import { Kpi } from '@/components/Kpi'
@@ -29,27 +30,27 @@ export default function ManagerDashboard() {
       <Kpi icon="alert" label="Lost during supply" value={n('damaged_in_supply') + n('missing_in_supply')} tone={n('damaged_in_supply') + n('missing_in_supply') ? 'warn' : undefined} />
       <Kpi icon="archive" label="Left in store" value={n('remaining')} />
     </div>
-    <div className="grid wide">
+    <div className="content-grid wide">
       <div className="panel"><h2>Stock by product</h2>
         <ProductStack labels={rows.map((x: any) => x.s.products?.name ?? '')} remaining={rows.map((x: any) => Number(x.b.remaining))} supplied={rows.map((x: any) => Number(x.b.supplied))} damaged={rows.map((x: any) => Number(x.b.damaged_in_supply))} missing={rows.map((x: any) => Number(x.b.missing_in_supply))} /></div>
       <div className="panel"><h2>Where your stock went</h2>
         <StockSplit remaining={n('remaining')} supplied={n('supplied')} damaged={n('damaged_in_supply')} missing={n('missing_in_supply')} /></div>
     </div>
     {rows.length ? (
-      <div className="cards" style={{ marginBottom: 16 }}>{rows.map(({ s, b }: any) => {
+      <div className="cards mb-4">{rows.map(({ s, b }: any) => {
         const rem = Number(b.remaining), as = Number(b.assigned)
         return (
           <div key={s.id} className="panel">
             <div className="row"><b>{s.products?.name}</b><Chip s={level(as, rem)} /></div>
             <div className="big">{rem}<small> {s.products?.unit} left</small></div>
-            <div className="bar"><i style={{ width: Math.max(0, Math.min(100, (rem / as) * 100)) + '%' }} /></div>
-            <div className="row mute" style={{ fontSize: 13, margin: '6px 0 12px' }}><span>Supplied {b.supplied}</span><span>Lost {Number(b.damaged_in_supply) + Number(b.missing_in_supply)}</span></div>
-            <Link className="btn sm" style={{ display: 'inline-block', textDecoration: 'none' }} href={`/manager/entry/${s.id}`}>{s.sheet_started_at ? 'Open sheet' : 'Create sheet'}</Link>
+            <div className="bar"><i className="w-[var(--bar-width)]" style={{ '--bar-width': `${Math.max(0, Math.min(100, (rem / as) * 100))}%` } as CSSProperties} /></div>
+            <div className="row mute my-[6px] mb-3 text-[13px]"><span>Supplied {b.supplied}</span><span>Lost {Number(b.damaged_in_supply) + Number(b.missing_in_supply)}</span></div>
+            <Link className="btn sm inline-block no-underline" href={`/manager/entry/${s.id}`}>{s.sheet_started_at ? 'Open sheet' : 'Create sheet'}</Link>
           </div>)
       })}</div>
-    ) : <div className="panel mute" style={{ marginBottom: 16 }}>No products are assigned to your store yet. The admin assigns each product and its quantity, and it shows up here.</div>}
+    ) : <div className="panel mute mb-4">No products are assigned to your store yet. The admin assigns each product and its quantity, and it shows up here.</div>}
     <div className="panel"><h2>Your recent entries</h2>
-      {d.log.length ? <div className="wrap"><table><thead><tr><th>When</th><th>Entry</th></tr></thead><tbody>{d.log.map((l: any) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td className="w">{l.message}</td></tr>)}</tbody></table></div> : <p className="mute" style={{ margin: 0 }}>Nothing recorded yet.</p>}
+      {d.log.length ? <div className="wrap"><table><thead><tr><th>When</th><th>Entry</th></tr></thead><tbody>{d.log.map((l: any) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td className="w">{l.message}</td></tr>)}</tbody></table></div> : <p className="mute m-0">Nothing recorded yet.</p>}
     </div>
   </>)
 }

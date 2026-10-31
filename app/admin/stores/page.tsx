@@ -38,7 +38,7 @@ export default function Stores() {
             <td className="n">{B.length}</td><td className="n">{sum(B, (b: any) => Number(b.remaining))}</td>
             <td><button className="btn ghost sm" onClick={() => toggle(s)}>{s.active ? 'Active' : 'Inactive'}</button></td>
             <td><button className="btn ghost sm" onClick={() => setDel(s)}>Delete</button></td></tr>
-        })}</tbody></table></div> : <p className="mute" style={{ margin: 0 }}>No stores yet. Add your first store or warehouse to begin.</p>}
+        })}</tbody></table></div> : <p className="mute m-0">No stores yet. Add your first store or warehouse to begin.</p>}
     </div>
     <Modal open={open} title="Add store" onClose={() => setOpen(false)}>
       <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>

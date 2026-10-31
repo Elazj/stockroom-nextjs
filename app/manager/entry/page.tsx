@@ -39,12 +39,12 @@ export default function Entry() {
         <tbody>{made.map((s: any) => { const b = B.get(s.id) ?? {}; return (
           <tr key={s.id}><td>{s.products?.name}</td><td className="n">{d.rows.filter((r: any) => r.supply_id === s.id).length}</td><td className="n">{b.supplied}</td><td className="n">{b.damaged_in_supply}</td><td className="n">{b.missing_in_supply}</td>
             <td className="n"><b>{b.remaining}</b> {s.products?.unit}</td>
-            <td><div className="btns"><Link className="btn sm" style={{ textDecoration: 'none' }} href={`/manager/entry/${s.id}`}>Open</Link><button className="btn ghost sm" onClick={() => dl(s.id)}>Download</button></div></td></tr>) })}</tbody>
-      </table></div> : <p className="mute" style={{ margin: 0 }}>{d.supplies.length ? 'No sheets yet. Choose New sheet to start one for a product assigned to you.' : 'No products are assigned to you yet. The admin assigns each product and its quantity.'}</p>}
+            <td><div className="btns"><Link className="btn sm no-underline" href={`/manager/entry/${s.id}`}>Open</Link><button className="btn ghost sm" onClick={() => dl(s.id)}>Download</button></div></td></tr>) })}</tbody>
+      </table></div> : <p className="mute m-0">{d.supplies.length ? 'No sheets yet. Choose New sheet to start one for a product assigned to you.' : 'No products are assigned to you yet. The admin assigns each product and its quantity.'}</p>}
     </div>
     <Modal open={open} title="New sheet" onClose={() => setOpen(false)}>
       <label>Product<select value={pick || free[0]?.id || ''} onChange={(e) => setPick(e.target.value)}>{free.map((s: any) => <option key={s.id} value={s.id}>{s.products?.name} ({s.products?.unit})</option>)}</select></label>
-      <p className="mute" style={{ marginTop: 0 }}>The sheet is named after the product. The admin set its assigned quantity.</p>
+      <p className="mute mt-0">The sheet is named after the product. The admin set its assigned quantity.</p>
       <p className="err" role="alert">{msg}</p>
       <div className="mfoot"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" onClick={create}>Create sheet</button></div>
     </Modal>

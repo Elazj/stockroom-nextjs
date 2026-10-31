@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
 export async function supabaseServer() {
@@ -6,7 +6,7 @@ export async function supabaseServer() {
   return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
       getAll: () => store.getAll(),
-      setAll: (list) => { try { list.forEach(({ name, value, options }) => store.set(name, value, options)) } catch {} },
+      setAll: (list: Parameters<SetAllCookies>[0]) => { try { list.forEach(({ name, value, options }) => store.set(name, value, options)) } catch {} },
     },
   })
 }
