@@ -16,7 +16,7 @@ export default function ThemeToggle() {
   }
   return (
     <button className="btn ghost sm" onClick={flip} aria-pressed={dark} aria-label="Switch between dark and light theme">
-      {dark ? 'Light mode' : 'Dark mode'}
+      {dark ? 'Switch to light mode' : 'Switch to dark mode'}
     </button>
   )
 }

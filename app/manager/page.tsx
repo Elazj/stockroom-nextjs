@@ -1,6 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { Chip, Hd } from '@/components/ui'
+import { Chip } from '@/components/ui'
+import { Kpi } from '@/components/Kpi'
+import { ProductStack, StockSplit } from '@/components/charts'
 import { fmtT, level, q, sum, useLive } from '@/lib/data'
 
 export default function ManagerDashboard() {
@@ -11,16 +13,30 @@ export default function ManagerDashboard() {
   }), ['supplies', 'sheet_rows', 'losses', 'activity_log', 'products'])
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
-  const B = new Map<string, any>(d.bal.map((b: any) => [b.supply_id, b]))
   const bal: any[] = d.bal
+  const B = new Map<string, any>(bal.map((b) => [b.supply_id, b]))
+  const rows = d.supplies.map((s: any) => ({ s, b: B.get(s.id) })).filter((x: any) => x.b)
+  const n = (k: string) => sum(bal, (b) => Number(b[k]))
+
   return (<>
-    <Hd title="My store" sub={<><span className="chip">Live</span> What is left of each product.</>} />
-    <div className="panel strip">
-      {([[d.supplies.length, 'Products to supply'], [sum(bal, (b) => Number(b.supplied)), 'Supplied to customers'], [sum(bal, (b) => Number(b.damaged_in_supply) + Number(b.missing_in_supply)), 'Lost during supply'], [sum(bal, (b) => Number(b.remaining)), 'Left in store']] as [number, string][]).map(([v, l]) => <div key={l}><b>{v}</b><span>{l}</span></div>)}
+    <div className="hero">
+      <div><h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
+      <span className="live-pill"><i />Live</span>
     </div>
-    {d.supplies.length ? (
-      <div className="cards" style={{ marginBottom: 16 }}>{d.supplies.map((s: any) => {
-        const b = B.get(s.id); if (!b) return null
+    <div className="kpis">
+      <Kpi icon="box" label="Products to supply" value={d.supplies.length} />
+      <Kpi icon="send" label="Supplied to customers" value={n('supplied')} />
+      <Kpi icon="alert" label="Lost during supply" value={n('damaged_in_supply') + n('missing_in_supply')} tone={n('damaged_in_supply') + n('missing_in_supply') ? 'warn' : undefined} />
+      <Kpi icon="archive" label="Left in store" value={n('remaining')} />
+    </div>
+    <div className="grid wide">
+      <div className="panel"><h2>Stock by product</h2>
+        <ProductStack labels={rows.map((x: any) => x.s.products?.name ?? '')} remaining={rows.map((x: any) => Number(x.b.remaining))} supplied={rows.map((x: any) => Number(x.b.supplied))} damaged={rows.map((x: any) => Number(x.b.damaged_in_supply))} missing={rows.map((x: any) => Number(x.b.missing_in_supply))} /></div>
+      <div className="panel"><h2>Where your stock went</h2>
+        <StockSplit remaining={n('remaining')} supplied={n('supplied')} damaged={n('damaged_in_supply')} missing={n('missing_in_supply')} /></div>
+    </div>
+    {rows.length ? (
+      <div className="cards" style={{ marginBottom: 16 }}>{rows.map(({ s, b }: any) => {
         const rem = Number(b.remaining), as = Number(b.assigned)
         return (
           <div key={s.id} className="panel">

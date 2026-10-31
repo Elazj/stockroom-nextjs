@@ -27,7 +27,7 @@ export default function SheetPage() {
     if (!qty) return setRe('Enter a quantity above zero.')
     if (qty > rem) return setRe(`Only ${rem} ${p.unit} left in the store.`)
     setRe('')
-    if (!(await act(supabaseBrowser().from('sheet_rows').insert({ supply_id: id, customer: cust, supply_ref: ref, quantity: qty }), 'Added to the sheet'))) return
+    if (!(await act(supabaseBrowser().from('sheet_rows').insert({ supply_id: id, customer: cust, supply_ref: ref, quantity: qty }), 'Added to the sheet', setRe))) return
     await logAct(`${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores.name}`)
     setR({ cust: '', ref: '', qty: '' }); reload()
   }
@@ -36,7 +36,7 @@ export default function SheetPage() {
     if (!qty) return setLe('Enter a quantity above zero.')
     if (qty > rem) return setLe(`Only ${rem} ${p.unit} left in the store.`)
     setLe('')
-    if (!(await act(supabaseBrowser().from('losses').insert({ supply_id: id, kind: l.kind, quantity: qty, note: l.note.trim() || null }), 'Recorded'))) return
+    if (!(await act(supabaseBrowser().from('losses').insert({ supply_id: id, kind: l.kind, quantity: qty, note: l.note.trim() || null }), 'Recorded', setLe))) return
     await logAct(`${p.name}: ${qty} ${p.unit} ${l.kind === 'damaged' ? 'damaged' : 'missing'} during supply at ${s.stores.name}`)
     setL({ kind: l.kind, qty: '', note: '' }); reload()
   }

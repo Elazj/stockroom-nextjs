@@ -25,8 +25,8 @@ function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose
     const row = { name, container_no: cont, unit, total: t, damaged_offload: d, missing_before_offload: m }
     const sb = supabaseBrowser()
     const ok = product
-      ? await act(sb.from('products').update(row).eq('id', product.id), 'Product updated')
-      : await act(sb.from('products').insert(row), `Product created. ${net} ${unit} ready to add to a store.`)
+      ? await act(sb.from('products').update(row).eq('id', product.id), 'Product updated', setErr)
+      : await act(sb.from('products').insert(row), `Product created. ${net} ${unit} ready to add to a store.`, setErr)
     if (!ok) return
     await logAct(product ? `Updated product ${name} (container ${cont})` : `Created product ${name} (container ${cont}): ${net} ${unit} to be supplied`)
     onSaved(); onClose()
@@ -67,8 +67,8 @@ function SupplyForm({ products, stores, supply, preset, onClose, onSaved }: { pr
     if (supply && n < supply.used) return setErr(`The manager has already recorded ${supply.used} ${prod.unit}, which is more than this.`)
     const sb = supabaseBrowser()
     const ok = supply
-      ? await act(sb.from('supplies').update({ quantity: n }).eq('id', supply.id), 'Quantity updated')
-      : await act(sb.from('supplies').insert({ product_id: pid, store_id: sid, quantity: n }), 'Product added to store')
+      ? await act(sb.from('supplies').update({ quantity: n }).eq('id', supply.id), 'Quantity updated', setErr)
+      : await act(sb.from('supplies').insert({ product_id: pid, store_id: sid, quantity: n }), 'Product added to store', (m) => setErr(m === 'That already exists.' ? 'This product is already in that store. Edit its quantity instead.' : m))
     if (!ok) return
     await logAct(supply ? `Changed ${prod.name} in a store to ${n} ${prod.unit}` : `Added ${n} ${prod.unit} of ${prod.name} to ${stores.find((s) => s.id === sid)?.name}`)
     onSaved(); onClose()

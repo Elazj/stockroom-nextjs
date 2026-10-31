@@ -1,12 +1,9 @@
 'use client'
-import { ReactNode, useState } from 'react'
+import { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import ThemeToggle from '@/components/ThemeToggle'
-import SignOut from '@/components/SignOut'
-import { Modal, ToastHost } from '@/components/ui'
-import { q, toast, useLive } from '@/lib/data'
-import { supabaseBrowser } from '@/lib/supabase/client'
+import { ToastHost } from '@/components/ui'
+import { useLive } from '@/lib/data'
 
 const NAV: Record<string, [string, string][]> = {
   admin: [['/admin', 'Dashboard'], ['/admin/stores', 'Stores'], ['/admin/products', 'Products'], ['/admin/supplies', 'Supplies'], ['/admin/reports', 'Reports']],
@@ -18,54 +15,27 @@ function OpenReports() {
   return data ? <span className="badge">{data}</span> : null
 }
 
-function ResetButton() {
-  const [open, setOpen] = useState(false)
-  const [wipe, setWipe] = useState(false)
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  async function go() {
-    if (text.trim() !== 'RESET') return toast('Type RESET to confirm.')
-    setBusy(true)
-    try {
-      const { error } = await supabaseBrowser().rpc('reset_all_data', { wipe_accounts: wipe })
-      if (error) return toast(error.message)
-      toast('Everything has been cleared')
-      setOpen(false); setText(''); setWipe(false)
-      setTimeout(() => location.reload(), 600)
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'Could not reset data.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (<>
-    <button className="btn ghost sm" onClick={() => setOpen(true)}>Reset all data</button>
-    <Modal open={open} title="Reset all data" onClose={() => setOpen(false)}>
-      <p className="mute" style={{ marginTop: 0 }}>This permanently deletes every store, product, supply, sheet entry, report and activity record. It cannot be undone.</p>
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input type="checkbox" style={{ width: 'auto', margin: 0 }} checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all other user accounts
-      </label>
-      <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
-      <div className="mfoot"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" disabled={busy} onClick={go}>Reset everything</button></div>
-    </Modal>
-  </>)
-}
-
 export default function Shell({ role, name, sub, children }: { role: 'admin' | 'manager'; name: string; sub?: string; children: ReactNode }) {
   const path = usePathname()
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
+  const settings = `/${role}/settings`
   return (
     <div className="app">
       <aside>
-        <div className="brand">Stockroom</div>
-        <nav>{NAV[role].map(([h, l]) => (
-          <Link key={h} href={h} className={on(h) ? 'on' : ''}>{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}</Link>
-        ))}</nav>
+        <div className="brand"><img src="/logo-icon.svg" alt="" width={30} height={30} /><span>Stockroom</span></div>
+        <nav>
+          {NAV[role].map(([h, l]) => (
+            <Link key={h} href={h} className={on(h) ? 'on' : ''}>{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}</Link>
+          ))}
+        </nav>
         <div className="foot">
-          <div><b>{name}</b><span className="mute">{role === 'admin' ? 'Admin' : 'Store manager'}{sub ? ', ' + sub : ''}</span></div>
-          <ThemeToggle />
-          {role === 'admin' ? <ResetButton /> : null}
-          <SignOut />
+          <div className="who"><b>{name}</b><span className="mute">{role === 'admin' ? 'Admin' : 'Store manager'}{sub ? ', ' + sub : ''}</span></div>
+          <Link href={settings} className={'setlink' + (on(settings) ? ' on' : '')}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" />
+            </svg>
+            Settings
+          </Link>
         </div>
       </aside>
       <main className="main">{children}</main>

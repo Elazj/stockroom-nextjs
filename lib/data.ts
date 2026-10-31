@@ -12,19 +12,34 @@ export const level = (assigned: number, remaining: number): Level => (remaining 
 export const fmtT = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
 export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en-CA')
 
+export const friendly = (m: string) =>
+  /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.' : m
+
 export async function q(p: PromiseLike<{ data: any; error: { message: string } | null }>): Promise<any> {
   const { data, error } = await p
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(friendly(error.message))
   return data
 }
 export const toast = (m: string) => window.dispatchEvent(new CustomEvent('toast', { detail: m }))
-export async function act(p: PromiseLike<{ error: { message: string; code?: string } | null }>, ok?: string) {
+
+// Runs a save. Errors go to onErr (shown inside a dialog) or, without it, to a toast.
+export async function act(p: PromiseLike<{ error: { message: string; code?: string } | null }>, ok?: string, onErr?: (m: string) => void) {
   const { error } = await p
-  if (error) { toast(error.code === '23505' ? 'That already exists.' : error.message); return false }
+  if (error) {
+    const m = error.code === '23505' ? 'That already exists.' : friendly(error.message)
+    if (onErr) onErr(m); else toast(m)
+    return false
+  }
   if (ok) toast(ok)
   return true
 }
 export const logAct = async (message: string) => { await supabaseBrowser().from('activity_log').insert({ message }) }
+
+// Deletes one row by id. Returns an error message, or '' when it worked.
+export async function remove(table: string, id: string) {
+  const { error } = await supabaseBrowser().from(table).delete().eq('id', id)
+  return error ? friendly(error.message) : ''
+}
 
 // Loads data now and again whenever anyone changes the listed tables (live updates).
 export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[]) {
@@ -33,7 +48,7 @@ export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: str
   const ref = useRef(load); ref.current = load
   const key = tables.join(',')
   const reload = useCallback(async () => {
-    try { setData(await ref.current(supabaseBrowser())); setErr('') } catch (e: any) { setErr(e.message ?? 'Could not load data') }
+    try { setData(await ref.current(supabaseBrowser())); setErr('') } catch (e: any) { setErr(friendly(e.message ?? 'Could not load data')) }
   }, [])
   useEffect(() => {
     reload()

@@ -1,3 +1,3 @@
 import { createBrowserClient } from '@supabase/ssr'
-export const supabaseBrowser = () =>
-  createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
+export const supabaseBrowser = () => createBrowserClient(SUPABASE_URL, SUPABASE_KEY)

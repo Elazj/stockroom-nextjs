@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { Hd, useSort } from '@/components/ui'
+import { Confirm, Hd, useSort } from '@/components/ui'
 import { ProductDialog, SupplyDialog, type ProdRow } from '@/components/Dialogs'
-import { q, r3, sum, useLive } from '@/lib/data'
+import { logAct, q, r3, remove, sum, useLive } from '@/lib/data'
 
 export default function Products() {
   const { data: d, err, reload } = useLive<any>(async (sb) => ({
@@ -13,6 +13,7 @@ export default function Products() {
   const [edit, setEdit] = useState<ProdRow | null>(null)
   const [creating, setCreating] = useState(false)
   const [addFor, setAddFor] = useState<string | null>(null)
+  const [del, setDel] = useState<ProdRow | null>(null)
   const rows: ProdRow[] = (d?.products ?? []).map((p: any) => {
     const alloc = sum((d.supplies as any[]).filter((s) => s.product_id === p.id), (s) => Number(s.quantity))
     return { ...p, total: Number(p.total), damaged_offload: Number(p.damaged_offload), missing_before_offload: Number(p.missing_before_offload), net: Number(p.net), alloc, free: r3(Number(p.net) - alloc) }
@@ -28,11 +29,14 @@ export default function Products() {
         <tbody>{s.rows.map((p) => <tr key={p.id}>
           <td>{p.name}</td><td>{p.container_no}</td><td>{p.unit}</td><td className="n">{p.total}</td><td className="n">{p.damaged_offload}</td><td className="n">{p.missing_before_offload}</td>
           <td className="n"><b>{p.net}</b></td><td className="n">{p.alloc}</td><td className="n">{p.free}</td>
-          <td><div className="btns"><button className="btn sm" disabled={p.free <= 0} onClick={() => setAddFor(p.id)}>Add to store</button><button className="btn ghost sm" onClick={() => setEdit(p)}>Edit</button></div></td></tr>)}</tbody>
+          <td><div className="btns"><button className="btn sm" disabled={p.free <= 0} onClick={() => setAddFor(p.id)}>Add to store</button><button className="btn ghost sm" onClick={() => setEdit(p)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(p)}>Delete</button></div></td></tr>)}</tbody>
       </table></div> : <p className="mute" style={{ margin: 0 }}>No products yet. Choose Create product to record your first container.</p>}
     </div>
     <ProductDialog open={creating} onClose={() => setCreating(false)} onSaved={reload} />
     <ProductDialog open={!!edit} product={edit ?? undefined} onClose={() => setEdit(null)} onSaved={reload} />
     <SupplyDialog open={!!addFor} preset={addFor ?? undefined} products={rows} stores={d.stores} onClose={() => setAddFor(null)} onSaved={reload} />
+    <Confirm open={!!del} title="Delete product" label="Delete product" onClose={() => setDel(null)}
+      text={`Delete ${del?.name ?? 'this product'} (container ${del?.container_no ?? ''})? It is also removed from every store, together with its sheets and entries. This cannot be undone.`}
+      onConfirm={async () => { const e = await remove('products', del!.id); if (!e) { await logAct(`Deleted product ${del!.name}`); reload() } return e }} />
   </>)
 }

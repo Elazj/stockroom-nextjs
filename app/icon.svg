@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Stockroom">
+<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="40" y1="20" x2="480" y2="500"><stop offset="0" stop-color="#1673BB"/><stop offset="1" stop-color="#3DB0F2"/></linearGradient></defs>
+<rect width="512" height="512" rx="116" fill="url(#g)"/>
+<g transform="translate(256 256) scale(1.16) translate(-256 -256)"><g stroke="url(#g)" stroke-width="7" stroke-linejoin="round">
+<polygon points="256,100 392,178 256,256 120,178" fill="#fff"/>
+<polygon points="120,178 256,256 256,412 120,334" fill="#fff" fill-opacity=".88"/>
+<polygon points="256,256 392,178 392,334 256,412" fill="#fff" fill-opacity=".6"/>
+</g>
+<polygon points="256,136 330,178 256,220 182,178" fill="url(#g)"/>
+</g></svg>

@@ -12,7 +12,7 @@ export default function ManagerReports() {
     const subject = f.subject.trim(), message = f.message.trim()
     if (subject.length < 3 || message.length < 10) return setMsg('Add a subject and a message of at least 10 characters.')
     setMsg('')
-    if (!(await act(supabaseBrowser().from('reports').insert({ category: f.category, subject, message }), 'Report sent to the admin'))) return
+    if (!(await act(supabaseBrowser().from('reports').insert({ category: f.category, subject, message }), 'Report sent to the admin', setMsg))) return
     await logAct(`Sent a report: ${subject}`)
     setF({ category: f.category, subject: '', message: '' }); reload()
   }

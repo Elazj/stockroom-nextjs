@@ -1,4 +1,5 @@
--- Stockroom schema. Paste into the Supabase SQL editor and run once.
+-- Stockroom schema. Paste into the Supabase SQL editor and run once (new projects only).
+-- Already ran an older version? Run migration-002.sql and migration-003.sql instead.
 
 create table stores (
   id uuid primary key default gen_random_uuid(),
@@ -127,16 +128,25 @@ create function start_sheet(p_supply uuid) returns void language sql security de
 as $$ update supplies set sheet_started_by = auth.uid(), sheet_started_at = now()
       where id = p_supply and store_id = my_store() and sheet_started_at is null $$;
 
--- Admin-only reset: clears all data, optionally every other account
+-- A manager without a store (for example after Google sign-in) joins one
+create function join_store(p_store uuid) returns void language sql security definer set search_path = public
+as $$ update profiles set store_id = p_store where id = auth.uid() and role = 'manager' and store_id is null $$;
+
+-- Admin-only reset: clears all data, optionally every other account.
+-- Every delete has "where true" because Supabase blocks deletes without a WHERE clause.
 create function reset_all_data(wipe_accounts boolean default false) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not is_admin() then raise exception 'Admins only'; end if;
-  truncate activity_log, reports, losses, sheet_rows, supplies, products restart identity cascade;
-  delete from stores;
+  if not is_admin() then raise exception 'Only an admin can reset the data'; end if;
+  delete from activity_log where true;
+  delete from reports where true;
+  delete from losses where true;
+  delete from sheet_rows where true;
+  delete from supplies where true;
+  delete from products where true;
+  delete from stores where true;
   if wipe_accounts then delete from auth.users where id <> auth.uid(); end if;
 end $$;
-revoke all on function reset_all_data(boolean) from public, anon;
 grant execute on function reset_all_data(boolean) to authenticated;
 
 -- Row level security
@@ -165,7 +175,3 @@ create policy log_add       on activity_log for insert to authenticated with che
 
 -- Live updates
 alter publication supabase_realtime add table supplies, sheet_rows, losses, reports, activity_log, products, stores;
-
--- A manager without a store (for example after Google sign-in) joins one
-create function join_store(p_store uuid) returns void language sql security definer set search_path = public
-as $$ update profiles set store_id = p_store where id = auth.uid() and role = 'manager' and store_id is null $$;
