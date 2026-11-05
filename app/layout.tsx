@@ -2,6 +2,7 @@
 // @ts-ignore Next.js processes this stylesheet import, but TypeScript has no CSS declaration here.
 import './globals.css'
 import type { Viewport } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata = { title: 'Stockroom', description: 'Multi-store stock management' }
 
@@ -15,7 +16,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body>{children}</body>
+      <body>{children}<Analytics /></body>
     </html>
   )
 }

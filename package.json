@@ -9,6 +9,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
+    "@vercel/analytics": "^2.0.1",
     "chart.js": "^4.4.7",
     "next": "^16.4.4",
     "react": "^19.0.0",
