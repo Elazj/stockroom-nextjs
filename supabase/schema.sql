@@ -10,6 +10,8 @@ create table stores (
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
   full_name text not null,
+  email text,
+  disabled boolean not null default false,
   role text not null default 'manager' check (role in ('admin','manager')),
   store_id uuid references stores on delete set null,
   created_at timestamptz default now()
@@ -41,7 +43,8 @@ create table sheet_rows (          -- customer, supply id (invoice/sales), quant
   supply_id uuid not null references supplies on delete cascade,
   customer text not null, supply_ref text not null,
   quantity numeric not null check (quantity > 0),
-  entered_by uuid not null default auth.uid() references profiles, created_at timestamptz default now()
+  entered_by uuid not null default auth.uid() references profiles, created_at timestamptz default now(),
+  client_id uuid
 );
 
 create table losses (              -- damaged or missing during supply
@@ -49,8 +52,11 @@ create table losses (              -- damaged or missing during supply
   supply_id uuid not null references supplies on delete cascade,
   kind text not null check (kind in ('damaged','missing')),
   quantity numeric not null check (quantity > 0), note text,
-  entered_by uuid not null default auth.uid() references profiles, created_at timestamptz default now()
+  entered_by uuid not null default auth.uid() references profiles, created_at timestamptz default now(),
+  client_id uuid
 );
+create unique index sheet_rows_client_id on sheet_rows (client_id) where client_id is not null;
+create unique index losses_client_id on losses (client_id) where client_id is not null;
 
 create table reports (
   id uuid primary key default gen_random_uuid(),
@@ -79,6 +85,10 @@ create function is_admin() returns boolean language sql stable security definer 
 as $$ select exists (select 1 from profiles where id = auth.uid() and role = 'admin') $$;
 create function my_store() returns uuid language sql stable security definer set search_path = public
 as $$ select store_id from profiles where id = auth.uid() $$;
+-- Policies call these. Supabase revokes PUBLIC execute, so logged-in users must be granted it
+-- or every tab shows "permission denied".
+grant execute on function is_admin() to authenticated;
+grant execute on function my_store() to authenticated;
 
 -- At most 3 manager accounts per store
 create function limit_store_accounts() returns trigger language plpgsql as $$
@@ -99,8 +109,8 @@ begin
   -- SECURITY: this allows anyone to sign up as admin, as requested. For production,
   -- allow admin only when no admin exists yet, or promote people by hand.
   if r = 'admin' then s := null; end if;
-  insert into profiles (id, full_name, role, store_id)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), r, s);
+  insert into profiles (id, full_name, email, role, store_id)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, r, s);
   return new;
 end $$;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
@@ -127,10 +137,12 @@ create trigger losses_guard before insert on losses for each row execute functio
 create function start_sheet(p_supply uuid) returns void language sql security definer set search_path = public
 as $$ update supplies set sheet_started_by = auth.uid(), sheet_started_at = now()
       where id = p_supply and store_id = my_store() and sheet_started_at is null $$;
+grant execute on function start_sheet(uuid) to authenticated;
 
 -- A manager without a store (for example after Google sign-in) joins one
 create function join_store(p_store uuid) returns void language sql security definer set search_path = public
 as $$ update profiles set store_id = p_store where id = auth.uid() and role = 'manager' and store_id is null $$;
+grant execute on function join_store(uuid) to authenticated;
 
 -- Admin-only reset: clears all data, optionally every other account.
 -- Every delete has "where true" because Supabase blocks deletes without a WHERE clause.
@@ -173,5 +185,11 @@ create policy rep_admin     on reports for update to authenticated using (is_adm
 create policy log_read      on activity_log for select to authenticated using (actor = auth.uid() or is_admin());
 create policy log_add       on activity_log for insert to authenticated with check (actor = auth.uid());
 
+-- Table access (RLS still decides which rows). Without this, PostgREST returns "permission denied".
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select on supply_balance to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
 -- Live updates
-alter publication supabase_realtime add table supplies, sheet_rows, losses, reports, activity_log, products, stores;
+alter publication supabase_realtime add table supplies, sheet_rows, losses, reports, activity_log, products, stores, profiles;

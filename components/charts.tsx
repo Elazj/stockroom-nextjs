@@ -112,6 +112,14 @@ export function TopBars({ labels, values }: { labels: string[]; values: number[]
   return <div className="chart sm"><Bar data={{ labels, datasets: [{ label: 'Supplied', data: values, backgroundColor: rgba(c.acc, 0.85), hoverBackgroundColor: c.acc, borderRadius: 8, borderSkipped: false, maxBarThickness: 26 }] }} options={o} /></div>
 }
 
+/** Actual daily use against one-day-ahead forecasts from each method. */
+export function ForecastLines({ labels, actual, sma, ses }: { labels: string[]; actual: number[]; sma: (number | null)[]; ses: (number | null)[] }) {
+  const c = useColors()
+  const o = base(c); o.scales = { x: scale(c, false), y: { ...scale(c, true), beginAtZero: true } }
+  const line = (label: string, data: (number | null)[], hex: string, dash?: number[]) => ({ label, data, borderColor: hex, backgroundColor: hex, tension: 0.3, borderWidth: 2, pointRadius: 0, borderDash: dash, spanGaps: false })
+  return <div className="chart"><Line data={{ labels, datasets: [line('Actual use', actual, c.ink), line('Moving average', sma, c.acc, [5, 4]), line('Exponential smoothing', ses, c.warn, [2, 3])] }} options={o} /></div>
+}
+
 /** Per product breakdown for a store manager. */
 export function ProductStack({ labels, remaining, supplied, damaged, missing }: { labels: string[]; remaining: number[]; supplied: number[]; damaged: number[]; missing: number[] }) {
   const c = useColors()

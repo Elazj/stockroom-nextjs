@@ -4,22 +4,34 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Hd } from '@/components/ui'
 import { SheetTables } from '@/components/Sheet'
-import { act, downloadSheet, fmtT, loadSheet, logAct, qn, useLive } from '@/lib/data'
+import { downloadSheet, fmtT, loadSheet, logAct, qn, SHEET_LIVE, toast, useLive } from '@/lib/data'
+import { insertEntry, recordOrQueue } from '@/lib/offline/record'
+import { overlaySheet } from '@/lib/offline/sync'
+import { useOnline, useOutbox } from '@/lib/offline/useOutbox'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 export default function SheetPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: d, err, reload } = useLive(async (sb) => loadSheet(sb, id), ['supplies', 'sheet_rows', 'losses'])
+  const online = useOnline()
+  const { items } = useOutbox(id)
+  const { data: raw, err, reload } = useLive(async (sb) => loadSheet(sb, id), SHEET_LIVE)
   const [r, setR] = useState({ cust: '', ref: '', qty: '' })
-  const [l, setL] = useState({ kind: 'damaged', qty: '', note: '' })
+  const [l, setL] = useState({ kind: 'damaged' as 'damaged' | 'missing', qty: '', note: '' })
   const [re, setRe] = useState('')
   const [le, setLe] = useState('')
   if (err) return <div><p className="err">{err}</p><Link href="/manager/entry">Back to sheets</Link></div>
-  if (!d) return <p className="mute">Loading…</p>
+  if (!raw) return <p className="mute">Loading…</p>
+  const d = overlaySheet(raw, items)
   const s = d.supply, b = d.bal, p = s.products, rem = Number(b.remaining)
 
   async function start() {
-    if (await act(supabaseBrowser().rpc('start_sheet', { p_supply: id }))) { await logAct(`Created the sheet for ${p.name}`); reload() }
+    const hit = await recordOrQueue({
+      kind: 'start_sheet', supplyId: id, log: `Created the sheet for ${p.name}`, payload: { productName: p.name },
+    }, () => supabaseBrowser().rpc('start_sheet', { p_supply: id }))
+    if (!hit.ok) return toast(hit.message)
+    if (!hit.queued) await logAct(`Created the sheet for ${p.name}`)
+    else toast('Saved on this device. It will sync when you are back online.')
+    reload()
   }
   async function addRow() {
     const qty = qn(r.qty), cust = r.cust.trim(), ref = r.ref.trim()
@@ -27,8 +39,14 @@ export default function SheetPage() {
     if (!qty) return setRe('Enter a quantity above zero.')
     if (qty > rem) return setRe(`Only ${rem} ${p.unit} left in the store.`)
     setRe('')
-    if (!(await act(supabaseBrowser().from('sheet_rows').insert({ supply_id: id, customer: cust, supply_ref: ref, quantity: qty }), 'Added to the sheet', setRe))) return
-    await logAct(`${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores.name}`)
+    const clientId = crypto.randomUUID()
+    const hit = await recordOrQueue({
+      id: clientId, kind: 'sheet_row', supplyId: id, log: `${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores?.name ?? 'the store'}`,
+      payload: { customer: cust, supply_ref: ref, quantity: qty, productName: p.name },
+    }, () => insertEntry('sheet_rows', { supply_id: id, customer: cust, supply_ref: ref, quantity: qty, client_id: clientId }))
+    if (!hit.ok) return setRe(hit.message)
+    if (hit.queued) toast('Saved on this device. It will sync when you are back online.')
+    else { await logAct(`${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores?.name ?? 'the store'}`); toast('Added to the sheet') }
     setR({ cust: '', ref: '', qty: '' }); reload()
   }
   async function addLoss() {
@@ -36,13 +54,19 @@ export default function SheetPage() {
     if (!qty) return setLe('Enter a quantity above zero.')
     if (qty > rem) return setLe(`Only ${rem} ${p.unit} left in the store.`)
     setLe('')
-    if (!(await act(supabaseBrowser().from('losses').insert({ supply_id: id, kind: l.kind, quantity: qty, note: l.note.trim() || null }), 'Recorded', setLe))) return
-    await logAct(`${p.name}: ${qty} ${p.unit} ${l.kind === 'damaged' ? 'damaged' : 'missing'} during supply at ${s.stores.name}`)
+    const clientId = crypto.randomUUID()
+    const hit = await recordOrQueue({
+      id: clientId, kind: 'loss', supplyId: id, log: `${p.name}: ${qty} ${p.unit} ${l.kind === 'damaged' ? 'damaged' : 'missing'} during supply at ${s.stores?.name ?? 'the store'}`,
+      payload: { lossKind: l.kind, quantity: qty, note: l.note.trim(), productName: p.name },
+    }, () => insertEntry('losses', { supply_id: id, kind: l.kind, quantity: qty, note: l.note.trim() || null, client_id: clientId }))
+    if (!hit.ok) return setLe(hit.message)
+    if (hit.queued) toast('Saved on this device. It will sync when you are back online.')
+    else { await logAct(`${p.name}: ${qty} ${p.unit} ${l.kind === 'damaged' ? 'damaged' : 'missing'} during supply at ${s.stores?.name ?? 'the store'}`); toast('Recorded') }
     setL({ kind: l.kind, qty: '', note: '' }); reload()
   }
 
   return (<>
-    <Hd title={`Sheet: ${p.name}`} sub={`${s.stores.name}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}`}>
+    <Hd title={`Sheet: ${p.name}`} sub={`${s.stores?.name ?? 'Your store'}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}${online ? '' : ' · offline'}`}>
       <Link className="btn ghost sm no-underline" href="/manager/entry">All sheets</Link>
       {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(d)}>Download sheet</button> : null}
     </Hd>
@@ -54,12 +78,13 @@ export default function SheetPage() {
     ) : (<>
       <div className="content-grid">
         <div className="panel"><h2>Record a supply</h2>
+          {!online ? <p className="mute mt-0">You are offline. This entry stays on this device and sends later. If the store no longer has enough stock, you will be asked what to do.</p> : null}
           <label>Customer name<input value={r.cust} maxLength={80} onChange={(e) => setR({ ...r, cust: e.target.value })} /></label>
           <label>Supply ID (invoice or sales number)<input value={r.ref} maxLength={40} onChange={(e) => setR({ ...r, ref: e.target.value })} /></label>
           <label>Quantity supplied ({p.unit})<input type="number" min="0" step="any" value={r.qty} onChange={(e) => setR({ ...r, qty: e.target.value })} /></label>
           <p className="err" role="alert">{re}</p><button className="btn" onClick={addRow}>Add to sheet</button></div>
         <div className="panel"><h2>Record damaged or missing</h2>
-          <label>Type<select value={l.kind} onChange={(e) => setL({ ...l, kind: e.target.value })}><option value="damaged">Damaged during supply</option><option value="missing">Missing during supply</option></select></label>
+          <label>Type<select value={l.kind} onChange={(e) => setL({ ...l, kind: e.target.value as 'damaged' | 'missing' })}><option value="damaged">Damaged during supply</option><option value="missing">Missing during supply</option></select></label>
           <label>Quantity ({p.unit})<input type="number" min="0" step="any" value={l.qty} onChange={(e) => setL({ ...l, qty: e.target.value })} /></label>
           <label>Note (optional)<input value={l.note} maxLength={120} onChange={(e) => setL({ ...l, note: e.target.value })} /></label>
           <p className="err" role="alert">{le}</p><button className="btn" onClick={addLoss}>Record</button></div>

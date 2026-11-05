@@ -2,6 +2,7 @@ import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
 export async function supabaseServer() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null
   const store = await cookies()
   return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {

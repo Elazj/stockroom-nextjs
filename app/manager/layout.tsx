@@ -1,9 +1,11 @@
 import Shell from '@/components/Shell'
 import JoinStore from '@/components/JoinStore'
 import { supabaseServer } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export default async function ManagerLayout({ children }: { children: React.ReactNode }) {
   const sb = await supabaseServer()
+  if (!sb) redirect('/login')
   const { data: { user } } = await sb.auth.getUser()
   const { data: p } = await sb.from('profiles').select('full_name, store_id').eq('id', user?.id ?? '').single()
   let storeName = ''

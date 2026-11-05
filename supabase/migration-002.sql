@@ -9,3 +9,4 @@ create policy prof_read on profiles for select to authenticated
 alter publication supabase_realtime add table products, stores;
 create or replace function join_store(p_store uuid) returns void language sql security definer set search_path = public
 as $$ update profiles set store_id = p_store where id = auth.uid() and role = 'manager' and store_id is null $$;
+grant execute on function join_store(uuid) to authenticated;

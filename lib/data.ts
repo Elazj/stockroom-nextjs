@@ -1,7 +1,12 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { cacheLive } from '@/lib/offline/sync'
+
+export const SHEET_LIVE = ['supplies', 'sheet_rows', 'losses']
+export const liveCacheKey = (path: string, tables: string[]) => `${path}|${tables.join(',')}`
 
 export const num = (v: unknown) => Number(v) || 0
 export const r3 = (n: number) => Math.round(n * 1000) / 1000
@@ -13,7 +18,9 @@ export const fmtT = (iso: string) => new Date(iso).toLocaleString([], { dateStyl
 export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en-CA')
 
 export const friendly = (m: string) =>
-  /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.' : m
+  /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.'
+  : /permission denied/i.test(m) ? 'The database is missing a permission grant. Run supabase/repair.sql (or migration-005.sql) in the Supabase SQL editor, then reload.'
+  : m
 
 export async function q(p: PromiseLike<{ data: any; error: { message: string } | null }>): Promise<any> {
   const { data, error } = await p
@@ -42,23 +49,29 @@ export async function remove(table: string, id: string) {
 }
 
 // Loads data now and again whenever anyone changes the listed tables (live updates).
-export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[]) {
+export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[], cacheKey?: string) {
+  const path = usePathname()
   const [data, setData] = useState<T | null>(null)
   const [err, setErr] = useState('')
+  const [fromCache, setFromCache] = useState(false)
   const ref = useRef(load); ref.current = load
   const key = tables.join(',')
+  const storeKey = cacheKey ?? liveCacheKey(path, tables)
   const reload = useCallback(async () => {
-    try { setData(await ref.current(supabaseBrowser())); setErr('') } catch (e: any) { setErr(friendly(e.message ?? 'Could not load data')) }
-  }, [])
+    try {
+      const hit = await cacheLive(storeKey, () => ref.current(supabaseBrowser()))
+      setData(hit.data); setFromCache(hit.fromCache); setErr('')
+    } catch (e: any) { setErr(friendly(e.message ?? 'Could not load data')) }
+  }, [storeKey])
   useEffect(() => {
     reload()
     const sb = supabaseBrowser(); let t: any
-    const ch = sb.channel('live-' + key + '-' + Math.random().toString(36).slice(2))
+    const ch = sb.channel('live-' + storeKey + '-' + Math.random().toString(36).slice(2))
     key.split(',').forEach((table) => ch.on('postgres_changes', { event: '*', schema: 'public', table }, () => { clearTimeout(t); t = setTimeout(reload, 200) }))
     ch.subscribe()
     return () => { clearTimeout(t); sb.removeChannel(ch) }
-  }, [key, reload])
-  return { data, err, reload }
+  }, [key, storeKey, reload])
+  return { data, err, reload, fromCache }
 }
 
 export async function loadSheet(sb: SupabaseClient, id: string) {

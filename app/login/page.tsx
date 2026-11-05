@@ -4,6 +4,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
 import { emailOk, pwErr } from '@/lib/validate'
+import { btn, cx, err, errBase, panel } from '@/lib/tw'
 
 type Conn = 'checking' | 'ok' | 'missing' | 'unreachable' | 'badkey'
 const NET = /failed to fetch|networkerror|load failed|fetch failed/i
@@ -24,7 +25,7 @@ export default function Login() {
     fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_KEY } })
       .then((r) => setConn(r.status === 401 || r.status === 403 ? 'badkey' : 'ok'))
       .catch(() => setConn('unreachable'))
-    sb.rpc('open_stores').then(({ data }) => setStores(data ?? []), () => {})
+    sb.rpc('open_stores').then((r: any) => setStores(r?.data ?? []), () => {})
   }, [])
 
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value })
@@ -38,7 +39,7 @@ export default function Login() {
       if (!emailOk(email)) return bad('Enter a valid email address, like name@company.com.')
       if (mode === 'login') {
         const { error } = await sb.auth.signInWithPassword({ email, password: f.pw })
-        if (error) return bad(/not confirmed/i.test(error.message) ? 'Confirm your email first. Check your inbox.' : NET.test(error.message) ? error.message : 'Email or password is incorrect.')
+        if (error) return bad(/not confirmed/i.test(error.message) ? 'Confirm your email first. Check your inbox.' : NET.test(error.message) ? error.message : /banned|disabled/i.test(error.message) ? 'This account has been disabled. Ask your admin.' : 'Email or password is incorrect.')
         location.href = '/'
         return
       }
@@ -62,18 +63,20 @@ export default function Login() {
   }
   const signup = mode === 'signup'
 
+  const tab = (active: boolean) => cx('flex-1 cursor-pointer rounded-[7px] border-0 px-2 py-2.5 font-semibold sm:py-2', active ? 'bg-panel text-acc' : 'bg-transparent text-mute')
+  const notice = 'my-3 rounded-[10px] bg-badsoft px-3 py-2.5 text-[13px] text-bad'
   return (
-    <main className="auth">
-      <div className="theme-fab"><ThemeToggle /></div>
-      <div className="panel card">
-        <div className="authlogo"><img src="/logo-icon.svg" alt="" width={44} height={44} /><h1>Stockroom</h1></div>
-        <p className="mute m-0">Stock balances for every store, in one place.</p>
-        {conn === 'missing' && <div className="banner" role="alert">The Supabase address or key is missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (in .env.local, or in Vercel then redeploy).</div>}
-        {conn === 'unreachable' && <div className="banner" role="alert">Cannot reach Supabase at <b>{host}</b>. Check that: the project is not paused (open the Supabase dashboard and Restore it); the URL has no typo, quotes or spaces; no ad blocker or firewall blocks supabase.co; and on Vercel you redeployed after setting the variables.</div>}
-        {conn === 'badkey' && <div className="banner" role="alert">Supabase rejected the key. Copy the anon (or publishable) key from Project Settings, API, then update NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.</div>}
-        <div className="tabs">
-          <button className={signup ? '' : 'on'} onClick={() => { setMode('login'); setMsg('') }}>Log in</button>
-          <button className={signup ? 'on' : ''} onClick={() => { setMode('signup'); setMsg('') }}>Sign up</button>
+    <main className="grid min-h-dvh place-items-center px-4 pb-6 pt-16">
+      <div className="fixed right-[calc(14px_+_env(safe-area-inset-right,0px))] top-[calc(14px_+_env(safe-area-inset-top,0px))] z-[5]"><ThemeToggle /></div>
+      <div className={cx(panel, 'w-full max-w-[440px]')}>
+        <div className="mb-1 flex items-center gap-3"><img src="/logo-icon.svg" alt="" width={44} height={44} /><h1 className="m-0">Stockroom</h1></div>
+        <p className="m-0 text-mute">Stock balances for every store, in one place.</p>
+        {conn === 'missing' && <div className={notice} role="alert">The Supabase address or key is missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (in .env.local, or in Vercel then redeploy).</div>}
+        {conn === 'unreachable' && <div className={notice} role="alert">Cannot reach Supabase at <b>{host}</b>. Check that: the project is not paused (open the Supabase dashboard and Restore it); the URL has no typo, quotes or spaces; no ad blocker or firewall blocks supabase.co; and on Vercel you redeployed after setting the variables.</div>}
+        {conn === 'badkey' && <div className={notice} role="alert">Supabase rejected the key. Copy the anon (or publishable) key from Project Settings, API, then update NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.</div>}
+        <div className="mb-4 mt-3.5 flex gap-1 rounded-[10px] bg-bg p-1">
+          <button className={tab(!signup)} onClick={() => { setMode('login'); setMsg('') }}>Log in</button>
+          <button className={tab(signup)} onClick={() => { setMode('signup'); setMsg('') }}>Sign up</button>
         </div>
         {signup && <label>Full name<input value={f.name} onChange={set('name')} autoComplete="name" /></label>}
         <label>Email<input type="email" value={f.email} onChange={set('email')} autoComplete="email" /></label>
@@ -88,12 +91,12 @@ export default function Login() {
         </>)}
         <label>Password<input type="password" value={f.pw} onChange={set('pw')} autoComplete={signup ? 'new-password' : 'current-password'} /></label>
         {signup && <>
-          <p className="mute -mt-1.5 mb-2.5 text-xs">At least 8 characters with upper and lower case letters, a number and a symbol.</p>
+          <p className="-mt-1.5 mb-2.5 text-xs text-mute">At least 8 characters with upper and lower case letters, a number and a symbol.</p>
           <label>Confirm password<input type="password" value={f.pw2} onChange={set('pw2')} autoComplete="new-password" /></label></>}
-        <p role="alert" className={good ? 'err ok' : 'err'}>{msg}</p>
-        <button className="btn" disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
-        <div className="or">or</div>
-        <button className="btn ghost" onClick={google}>Continue with Google</button>
+        <p role="alert" className={cx(errBase, good ? 'text-acc' : 'text-bad')}>{msg}</p>
+        <button className={btn('primary', 'md', true)} disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
+        <div className="my-3 text-center text-[13px] text-mute">or</div>
+        <button className={btn('ghost', 'md', true)} onClick={google}>Continue with Google</button>
       </div>
     </main>
   )

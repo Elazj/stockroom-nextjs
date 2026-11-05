@@ -10,14 +10,14 @@ export function SheetTables({ rows, losses }: { rows: any[]; losses: any[] }) {
     {rows.length ? (
       <div className="wrap"><table>
         <thead><tr>{s.th('date', 'Date')}{s.th('customer', 'Customer')}{s.th('ref', 'Supply ID')}{s.th('qty', 'Qty', 'n')}<th>By</th></tr></thead>
-        <tbody>{s.rows.map((r) => <tr key={r.id}><td>{fmtT(r.created_at)}</td><td>{r.customer}</td><td>{r.supply_ref}</td><td className="n">{r.quantity}</td><td>{r.profiles?.full_name ?? ''}</td></tr>)}</tbody>
+        <tbody>{s.rows.map((r) => <tr key={r.id}><td>{fmtT(r.created_at)}</td><td>{r.customer}{r.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{r.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td>{r.supply_ref}</td><td className="n">{r.quantity}</td><td>{r.profiles?.full_name ?? ''}</td></tr>)}</tbody>
       </table></div>
     ) : <p className="mute m-0">Nothing recorded yet.</p>}
     <h2 className="mt-[18px]">Damaged and missing during supply</h2>
     {losses.length ? (
       <div className="wrap"><table>
         <thead><tr><th>Date</th><th>Type</th><th className="n">Qty</th><th>Note</th><th>By</th></tr></thead>
-        <tbody>{losses.map((l) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td>{l.kind === 'damaged' ? 'Damaged' : 'Missing'}</td><td className="n">{l.quantity}</td><td className="w">{l.note ?? ''}</td><td>{l.profiles?.full_name ?? ''}</td></tr>)}</tbody>
+        <tbody>{losses.map((l) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td>{l.kind === 'damaged' ? 'Damaged' : 'Missing'}{l.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{l.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td className="n">{l.quantity}</td><td className="w">{l.note ?? ''}</td><td>{l.profiles?.full_name ?? ''}</td></tr>)}</tbody>
       </table></div>
     ) : <p className="mute m-0">None recorded.</p>}
   </>)

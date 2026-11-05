@@ -507,6 +507,18 @@
     @apply m-0 max-w-[560px] opacity-[0.92];
   }
 
+  .offline-bar {
+    @apply mb-4 rounded-2xl border border-line bg-warnsoft p-3.5;
+  }
+
+  .offline-bar > div:first-child b {
+    @apply block mb-1;
+  }
+
+  .offline-conflict {
+    @apply mt-3 rounded-[10px] bg-panel px-3 py-2.5;
+  }
+
   .live-pill {
     @apply inline-flex items-center gap-2 rounded-full bg-white/20 px-[14px] py-1.5 text-[13px] font-semibold;
   }

@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
 
 // Keeps the session fresh and keeps each role in its own area.
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
   let res = NextResponse.next({ request: req })
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
