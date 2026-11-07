@@ -6,6 +6,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const sb = await supabaseServer()
   if (!sb) redirect('/login')
   const { data: { user } } = await sb.auth.getUser()
-  const { data: p } = await sb.from('profiles').select('full_name').eq('id', user?.id ?? '').single()
-  return <Shell role="admin" name={p?.full_name ?? 'Admin'}>{children}</Shell>
+  const { data: p } = await sb.from('profiles').select('full_name, company_name').eq('id', user?.id ?? '').single()
+  return <Shell role="admin" name={p?.full_name ?? 'Admin'} sub={p?.company_name ?? undefined}>{children}</Shell>
 }

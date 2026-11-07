@@ -7,15 +7,16 @@ import { fmtT, level, localDay, q, sum, useLive } from '@/lib/data'
 export default function AdminDashboard() {
   const { data: d, err } = useLive<any>(async (sb) => {
     const since = new Date(Date.now() - 8 * 864e5).toISOString()
-    const [bal, products, stores, open, reps, log, rows, losses] = await Promise.all([
+    const [bal, products, stores, open, reps, log, rows, losses, me] = await Promise.all([
       q(sb.from('supply_balance').select('*')), q(sb.from('products').select('*')), q(sb.from('stores').select('*')),
       sb.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', false).then((r: any) => r.count ?? 0),
       q(sb.from('reports').select('id, subject, resolved, profiles(full_name)').order('created_at', { ascending: false }).limit(4)),
       q(sb.from('activity_log').select('id, message, created_at, profiles(full_name)').order('created_at', { ascending: false }).limit(10)),
       q(sb.from('sheet_rows').select('quantity, created_at').gte('created_at', since)),
       q(sb.from('losses').select('quantity, created_at').gte('created_at', since)),
+      sb.auth.getUser().then(({ data: { user } }) => q(sb.from('profiles').select('company_name').eq('id', user?.id ?? '').single())),
     ])
-    return { bal, products, stores, open, reps, log, rows, losses }
+    return { bal, products, stores, open, reps, log, rows, losses, me }
   }, ['supplies', 'sheet_rows', 'losses', 'reports', 'activity_log', 'products', 'stores'])
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
@@ -35,9 +36,10 @@ export default function AdminDashboard() {
   const top = [...sums.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 6)
   const need = B.filter((b, i) => lv[i] !== 'ok').sort((a, b) => a.remaining - b.remaining).slice(0, 6)
 
+  const company: string = d.me?.company_name ?? ''
   return (<>
     <div className="hero">
-      <div><h1>Dashboard</h1><p>Live overview of every store. Entries from store managers appear here automatically.</p></div>
+      <div><h1>Dashboard{company ? <> — {company}</> : null}</h1><p>Live overview of every store. Entries from store managers appear here automatically.</p></div>
       <span className="live-pill"><i />Live</span>
     </div>
     {!d.stores.length || !B.length ? <div className="panel mb-4"><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
