@@ -11,6 +11,7 @@ create table profiles (
   id uuid primary key references auth.users on delete cascade,
   full_name text not null,
   email text,
+  company_name text,               -- the admin's company / business name, shown on the dashboard
   disabled boolean not null default false,
   role text not null default 'manager' check (role in ('admin','manager')),
   store_id uuid references stores on delete set null,
@@ -20,6 +21,7 @@ create table profiles (
 create table products (
   id uuid primary key default gen_random_uuid(),
   name text not null, container_no text not null, unit text not null default 'pieces',
+  date_arrived date,                -- when the container arrived, recorded by the admin
   total numeric not null check (total > 0),
   damaged_offload numeric not null default 0 check (damaged_offload >= 0),
   missing_before_offload numeric not null default 0 check (missing_before_offload >= 0),
@@ -104,13 +106,14 @@ create trigger profiles_limit before insert or update on profiles for each row e
 create function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 declare r text := coalesce(new.raw_user_meta_data->>'role', 'manager');
         s uuid := nullif(new.raw_user_meta_data->>'store_id', '')::uuid;
+        c text := nullif(trim(coalesce(new.raw_user_meta_data->>'company_name', '')), '');
 begin
   if r not in ('admin','manager') then r := 'manager'; end if;
   -- SECURITY: this allows anyone to sign up as admin, as requested. For production,
   -- allow admin only when no admin exists yet, or promote people by hand.
   if r = 'admin' then s := null; end if;
-  insert into profiles (id, full_name, email, role, store_id)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, r, s);
+  insert into profiles (id, full_name, email, company_name, role, store_id)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, c, r, s);
   return new;
 end $$;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();

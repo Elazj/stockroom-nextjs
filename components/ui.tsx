@@ -73,6 +73,6 @@ export function ToastHost() {
   return <div ref={ref} popover="manual" className="toast" role="status">{m}</div>
 }
 
-export const Hd = ({ title, sub, children }: { title: string; sub?: ReactNode; children?: ReactNode }) => (
-  <div className="hd"><div><h1>{title}</h1>{sub ? <p>{sub}</p> : null}</div><div className="btns">{children}</div></div>
+export const Hd = ({ title, sub, meta, children }: { title: string; sub?: ReactNode; meta?: ReactNode; children?: ReactNode }) => (
+  <div className="hd"><div>{meta ? <p className="m-0 mb-1 text-[13px] font-semibold text-acc">{meta}</p> : null}<h1>{title}</h1>{sub ? <p>{sub}</p> : null}</div><div className="btns">{children}</div></div>
 )

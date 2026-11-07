@@ -12,7 +12,8 @@ const NET = /failed to fetch|networkerror|load failed|fetch failed/i
 export default function Login() {
   const sb = supabaseBrowser()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const [f, setF] = useState({ name: '', email: '', pw: '', pw2: '', role: 'manager', store: '' })
+  const [role, setRole] = useState<'manager' | 'admin'>('manager')
+  const [f, setF] = useState({ name: '', email: '', pw: '', pw2: '', store: '', company: '' })
   const [stores, setStores] = useState<{ id: string; name: string; accounts: number }[]>([])
   const [msg, setMsg] = useState('')
   const [good, setGood] = useState(false)
@@ -44,12 +45,15 @@ export default function Login() {
         return
       }
       if (f.name.trim().length < 2) return bad('Enter your full name.')
+      const company = f.company.trim()
+      if (role === 'admin' && !company) return bad('Enter your company or business name. It is shown on your dashboard.')
+      if (company.length > 80) return bad('The company name is too long (80 characters at most).')
       const e = pwErr(f.pw); if (e) return bad(e)
       if (f.pw !== f.pw2) return bad('Passwords do not match.')
-      if (f.role === 'manager' && !f.store) return bad('Choose your store.')
+      if (role === 'manager' && !f.store) return bad('Choose your store.')
       const { error } = await sb.auth.signUp({
         email, password: f.pw,
-        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: f.role, store_id: f.role === 'manager' ? f.store : '' } },
+        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role, store_id: role === 'manager' ? f.store : '', company_name: role === 'admin' ? company : '' } },
       })
       if (error) return bad(error.message)
       setGood(true); setMsg('Check your inbox and confirm your email, then log in.')
@@ -80,14 +84,19 @@ export default function Login() {
         </div>
         {signup && <label>Full name<input value={f.name} onChange={set('name')} autoComplete="name" /></label>}
         <label>Email<input type="email" value={f.email} onChange={set('email')} autoComplete="email" /></label>
-        {signup && (<>
+        {signup && (<>/
           <label>Account type
-            <select value={f.role} onChange={set('role')}><option value="manager">Store manager</option><option value="admin">Admin</option></select></label>
-          {f.role === 'manager' && <label>Your store (up to 3 accounts each)
-            <select value={f.store} onChange={set('store')}>
-              <option value="">{stores.length ? 'Choose a store' : 'No stores yet'}</option>
-              {stores.map((s) => <option key={s.id} value={s.id} disabled={s.accounts >= 3}>{s.name} ({s.accounts}/3 accounts)</option>)}
-            </select></label>}
+            <select value={role} onChange={(e) => setRole(e.target.value as 'manager' | 'admin')}><option value="manager">Store manager</option><option value="admin">Admin</option></select></label>
+          {role === 'admin'
+            ? <label>Company / business name
+                <input value={f.company} onChange={set('company')} maxLength={80} autoComplete="organization" placeholder="e.g. Acme Supplies Ltd" />
+                <span className="mt-1 block text-xs text-mute">This name is shown on your dashboard.</span>
+              </label>
+            : <label>Your store (up to 3 accounts each)
+                <select value={f.store} onChange={set('store')}>
+                  <option value="">{stores.length ? 'Choose a store' : 'No stores yet'}</option>
+                  {stores.map((s) => <option key={s.id} value={s.id} disabled={s.accounts >= 3}>{s.name} ({s.accounts}/3 accounts)</option>)}
+                </select></label>}
         </>)}
         <label>Password<input type="password" value={f.pw} onChange={set('pw')} autoComplete={signup ? 'new-password' : 'current-password'} /></label>
         {signup && <>

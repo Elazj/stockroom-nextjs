@@ -14,15 +14,20 @@ alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists disabled boolean not null default false;
 update public.profiles p set email = u.email from auth.users u where u.id = p.id and p.email is null;
 
--- 2. Sign-up trigger: creates the profile and saves the email
+-- 1b. Products keep the date the container arrived; admin profiles keep the company/business name
+alter table public.products add column if not exists date_arrived date;
+alter table public.profiles add column if not exists company_name text;
+
+-- 2. Sign-up trigger: creates the profile and saves the email and company name
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 declare r text := coalesce(new.raw_user_meta_data->>'role', 'manager');
         s uuid := nullif(new.raw_user_meta_data->>'store_id', '')::uuid;
+        c text := nullif(trim(coalesce(new.raw_user_meta_data->>'company_name', '')), '');
 begin
   if r not in ('admin','manager') then r := 'manager'; end if;
   if r = 'admin' then s := null; end if;
-  insert into public.profiles (id, full_name, email, role, store_id)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, r, s);
+  insert into public.profiles (id, full_name, email, company_name, role, store_id)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email,'@',1)), new.email, c, r, s);
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
@@ -133,4 +138,6 @@ select check_name, ok from (
   union all select 11, 'logged-in users can call is_admin()', has_function_privilege('authenticated', 'public.is_admin()', 'execute')
   union all select 12, 'logged-in users can call my_store()', has_function_privilege('authenticated', 'public.my_store()', 'execute')
   union all select 13, 'logged-in users can read stores', has_table_privilege('authenticated', 'public.stores', 'select')
+  union all select 14, 'products has the date_arrived column', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'date_arrived')
+  union all select 15, 'profiles has the company_name column', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'company_name')
 ) c order by n;

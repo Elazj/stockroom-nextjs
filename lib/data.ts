@@ -15,6 +15,7 @@ export const qn = (v: string) => { const n = r3(Number(v)); return n > 0 && isFi
 export type Level = 'ok' | 'low' | 'out'
 export const level = (assigned: number, remaining: number): Level => (remaining <= 0 ? 'out' : remaining <= assigned * 0.2 ? 'low' : 'ok')
 export const fmtT = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+export const fmtD = (d?: string | null) => d ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')).toLocaleDateString([], { dateStyle: 'medium' }) : '-'
 export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en-CA')
 
 export const friendly = (m: string) =>
