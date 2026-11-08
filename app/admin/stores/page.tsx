@@ -7,19 +7,21 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 export default function Stores() {
   const { data: d, err, reload } = useLive<any>(async (sb) => ({
     stores: await q(sb.from('stores').select('*').order('created_at')),
-    profiles: await q(sb.from('profiles').select('store_id, role')),
+    profiles: await q(sb.from('profiles').select('id, full_name, email, store_id, role').eq('role', 'manager').order('full_name')),
     bal: await q(sb.from('supply_balance').select('store_id, remaining')),
-  }), ['stores', 'supplies', 'sheet_rows', 'losses'])
+  }), ['stores', 'profiles', 'supplies', 'sheet_rows', 'losses', 'gifts'])
   const [open, setOpen] = useState(false)
   const [del, setDel] = useState<any>(null)
-  const [f, setF] = useState({ name: '', loc: '', mgr: '' })
+  const [f, setF] = useState({ name: '', loc: '', managerId: '' })
   const [msg, setMsg] = useState('')
   async function add() {
     const name = f.name.trim()
     if (!name) return setMsg('Enter a store name.')
-    if (!(await act(supabaseBrowser().from('stores').insert({ name, location: f.loc.trim() || null, manager_name: f.mgr.trim() || null }), 'Store added', setMsg))) return
+    const manager = d.profiles.find((p: any) => p.id === f.managerId)
+    if (d.profiles.length && !manager) return setMsg('Choose a team member to manage this store.')
+    if (!(await act(supabaseBrowser().from('stores').insert({ name, location: f.loc.trim() || null, manager_name: manager?.full_name ?? null }), 'Store added', setMsg))) return
     await logAct(`Added store ${name}`)
-    setOpen(false); setF({ name: '', loc: '', mgr: '' }); setMsg(''); reload()
+    setOpen(false); setF({ name: '', loc: '', managerId: '' }); setMsg(''); reload()
   }
   async function toggle(s: any) {
     if (await act(supabaseBrowser().from('stores').update({ active: !s.active }).eq('id', s.id))) { await logAct(`${s.active ? 'Deactivated' : 'Activated'} ${s.name}`); reload() }
@@ -43,7 +45,13 @@ export default function Stores() {
     <Modal open={open} title="Add store" onClose={() => setOpen(false)}>
       <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
       <label>Location<input value={f.loc} onChange={(e) => setF({ ...f, loc: e.target.value })} /></label>
-      <label>Manager<input value={f.mgr} onChange={(e) => setF({ ...f, mgr: e.target.value })} /></label>
+      <label>Manager
+        <select value={f.managerId} onChange={(e) => setF({ ...f, managerId: e.target.value })}>
+          <option value="">{d.profiles.length ? 'Select a team member' : 'No team members yet'}</option>
+          {d.profiles.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}{p.email ? ` (${p.email})` : ''}</option>)}
+        </select>
+        {!d.profiles.length && <span className="mt-1 block text-xs text-mute">Create the first manager account after adding this store.</span>}
+      </label>
       <p className="err" role="alert">{msg}</p>
       <div className="mfoot"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" onClick={add}>Save</button></div>
     </Modal>

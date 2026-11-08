@@ -1,3 +1,5 @@
+-- WARNING: do NOT run this file once migration-007.sql has been run. It replaces functions or security rules
+-- that migration-007 made company-aware, and would undo the separation between companies.
 -- Run ONCE if you ran an older schema.sql and have not run this yet.
 -- (New projects do not need it: schema.sql already includes it.)
 drop policy if exists prod_read on products;

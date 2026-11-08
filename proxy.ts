@@ -18,7 +18,16 @@ export async function proxy(req: NextRequest) {
       },
     },
   })
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error?.code === 'refresh_token_not_found') {
+    const response = NextResponse.redirect(new URL('/login', req.url))
+    for (const { name } of req.cookies.getAll()) {
+      if (/^sb-.+-auth-token(?:\.\d+)?$/.test(name)) {
+        response.cookies.set(name, '', { path: '/', maxAge: 0 })
+      }
+    }
+    return response
+  }
   const path = req.nextUrl.pathname
   const area = path.startsWith('/admin') ? 'admin' : path.startsWith('/manager') ? 'manager' : null
   if (!area) return res

@@ -11,7 +11,8 @@ export default function ManagerDashboard() {
     bal: await q(sb.from('supply_balance').select('*')),
     supplies: await q(sb.from('supplies').select('id, sheet_started_at, products(name, unit)')),
     log: await q(sb.from('activity_log').select('id, message, created_at').order('created_at', { ascending: false }).limit(6)),
-  }), ['supplies', 'sheet_rows', 'losses', 'activity_log', 'products'])
+    company: ((await q(sb.from('companies').select('name').limit(1))) as any[])[0]?.name ?? '',
+  }), ['supplies', 'sheet_rows', 'losses', 'gifts', 'activity_log', 'products'])
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
   const bal: any[] = d.bal
@@ -21,20 +22,21 @@ export default function ManagerDashboard() {
 
   return (<>
     <div className="hero">
-      <div><h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
+      <div>{d.company ? <div className="mb-1 text-[13px] font-semibold uppercase tracking-wider opacity-90">{d.company}</div> : null}<h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
       <span className="live-pill"><i />Live</span>
     </div>
     <div className="kpis">
       <Kpi icon="box" label="Products to supply" value={d.supplies.length} />
       <Kpi icon="send" label="Supplied to customers" value={n('supplied')} />
+      <Kpi icon="gift" label="Gifted" value={n('gifted')} />
       <Kpi icon="alert" label="Lost during supply" value={n('damaged_in_supply') + n('missing_in_supply')} tone={n('damaged_in_supply') + n('missing_in_supply') ? 'warn' : undefined} />
       <Kpi icon="archive" label="Left in store" value={n('remaining')} />
     </div>
     <div className="content-grid wide">
       <div className="panel"><h2>Stock by product</h2>
-        <ProductStack labels={rows.map((x: any) => x.s.products?.name ?? '')} remaining={rows.map((x: any) => Number(x.b.remaining))} supplied={rows.map((x: any) => Number(x.b.supplied))} damaged={rows.map((x: any) => Number(x.b.damaged_in_supply))} missing={rows.map((x: any) => Number(x.b.missing_in_supply))} /></div>
+        <ProductStack labels={rows.map((x: any) => x.s.products?.name ?? '')} remaining={rows.map((x: any) => Number(x.b.remaining))} supplied={rows.map((x: any) => Number(x.b.supplied))} gifted={rows.map((x: any) => Number(x.b.gifted))} damaged={rows.map((x: any) => Number(x.b.damaged_in_supply))} missing={rows.map((x: any) => Number(x.b.missing_in_supply))} /></div>
       <div className="panel"><h2>Where your stock went</h2>
-        <StockSplit remaining={n('remaining')} supplied={n('supplied')} damaged={n('damaged_in_supply')} missing={n('missing_in_supply')} /></div>
+        <StockSplit remaining={n('remaining')} supplied={n('supplied')} gifted={n('gifted')} damaged={n('damaged_in_supply')} missing={n('missing_in_supply')} /></div>
     </div>
     {rows.length ? (
       <div className="cards mb-4">{rows.map(({ s, b }: any) => {
@@ -44,7 +46,7 @@ export default function ManagerDashboard() {
             <div className="row"><b>{s.products?.name}</b><Chip s={level(as, rem)} /></div>
             <div className="big">{rem}<small> {s.products?.unit} left</small></div>
             <div className="bar"><i className="w-[var(--bar-width)]" style={{ '--bar-width': `${Math.max(0, Math.min(100, (rem / as) * 100))}%` } as CSSProperties} /></div>
-            <div className="row mute my-[6px] mb-3 text-[13px]"><span>Supplied {b.supplied}</span><span>Lost {Number(b.damaged_in_supply) + Number(b.missing_in_supply)}</span></div>
+            <div className="row mute my-[6px] mb-3 text-[13px]"><span>Supplied {b.supplied}</span><span>Gifted {b.gifted}</span><span>Lost {Number(b.damaged_in_supply) + Number(b.missing_in_supply)}</span></div>
             <Link className="btn sm inline-block no-underline" href={`/manager/entry/${s.id}`}>{s.sheet_started_at ? 'Open sheet' : 'Create sheet'}</Link>
           </div>)
       })}</div>

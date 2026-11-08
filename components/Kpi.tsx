@@ -9,6 +9,7 @@ const ICONS: Record<string, ReactNode> = {
   archive: <><path d="M4 4h16v5H4z" /><path d="M6 9v11h12V9M10 13h4" /></>,
   flag: <path d="M5 21V4M5 4h12l-2 4 2 4H5" />,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  gift: <><path d="M3 8h18v4H3zM5 12v8h14v-8M12 8v12" /><path d="M12 8S10.5 3.5 8 3.5a2.2 2.2 0 0 0 0 4.5M12 8s1.5-4.5 4-4.5a2.2 2.2 0 0 1 0 4.5" /></>,
 }
 
 export function Kpi({ icon, label, value, tone }: { icon: keyof typeof ICONS; label: string; value: ReactNode; tone?: 'warn' | 'bad' }) {

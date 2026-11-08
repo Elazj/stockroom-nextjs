@@ -24,7 +24,7 @@ export default function OfflineBar() {
       {on && waiting.length ? <button className="btn ghost sm" onClick={() => { void syncOutbox() }}>Retry sync</button> : null}
       {conflicts.map((c) => (
         <div key={c.id} className="offline-conflict">
-          <p className="m-0"><b>{c.payload.productName ?? 'Entry'}</b> — {c.kind === 'loss' ? `${c.payload.quantity} ${c.payload.lossKind}` : `${c.payload.quantity} to ${c.payload.customer ?? ''} (${c.payload.supply_ref ?? ''})`}</p>
+          <p className="m-0"><b>{c.payload.productName ?? 'Entry'}</b> — {c.kind === 'loss' ? `${c.payload.quantity} ${c.payload.lossKind}` : c.kind === 'gift' ? `${c.payload.quantity} gifted to ${c.payload.recipient ?? ''}` : `${c.payload.quantity} to ${c.payload.customer ?? ''} (${c.payload.supply_ref ?? ''})`}</p>
           <p className="mute mt-[4px] mb-2">{c.conflict?.message}</p>
           <div className="btns">
             {c.conflict?.code === 'overdraw' && (c.conflict.remaining ?? 0) > 0 ? (

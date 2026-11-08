@@ -6,6 +6,8 @@ import { Bar, Doughnut, Line } from 'react-chartjs-2'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler)
 
 type Colors = { acc: string; warn: string; bad: string; ink: string; mute: string; line: string; panel: string; font: string }
+// Gifts get their own color so they are easy to tell apart from sales, damage and missing stock.
+const GIFT = '#8B5CF6'
 const FALLBACK: Colors = { acc: '#1673BB', warn: '#B76E00', bad: '#B3322B', ink: '#0F2A3D', mute: '#53708A', line: '#CDE2F2', panel: '#FFFFFF', font: 'system-ui, sans-serif' }
 
 export const rgba = (hex: string, a: number) => {
@@ -61,7 +63,7 @@ const centerText = {
 const Empty = ({ text }: { text: string }) => <p className="mute m-0">{text}</p>
 
 /** Smooth area chart: supplied to customers vs damaged or missing, per day. */
-export function SupplyLossChart({ labels, supplied, lost }: { labels: string[]; supplied: number[]; lost: number[] }) {
+export function SupplyLossChart({ labels, supplied, lost, gifted }: { labels: string[]; supplied: number[]; lost: number[]; gifted?: number[] }) {
   const c = useColors()
   const area = (hex: string) => (ctx: any) => {
     const a = ctx.chart.chartArea
@@ -72,15 +74,15 @@ export function SupplyLossChart({ labels, supplied, lost }: { labels: string[]; 
   }
   const ds = (label: string, data: number[], hex: string) => ({ label, data, borderColor: hex, backgroundColor: area(hex), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: hex, pointBorderColor: c.panel, pointBorderWidth: 2 })
   const o = base(c); o.scales = { x: scale(c, false), y: { ...scale(c, true), beginAtZero: true } }
-  return <div className="chart"><Line data={{ labels, datasets: [ds('Supplied to customers', supplied, c.acc), ds('Damaged or missing', lost, c.warn)] }} options={o} /></div>
+  return <div className="chart"><Line data={{ labels, datasets: [ds('Supplied to customers', supplied, c.acc), ...(gifted ? [ds('Gifted', gifted, GIFT)] : []), ds('Damaged or missing', lost, c.warn)] }} options={o} /></div>
 }
 
-type Tone = 'acc' | 'warn' | 'bad' | 'mute'
+type Tone = 'acc' | 'warn' | 'bad' | 'mute' | 'gift'
 function Donut({ labels, values, tones, total, caption }: { labels: string[]; values: number[]; tones: Tone[]; total: number | string; caption: string }) {
   const c = useColors()
   const o = base(c); o.cutout = '72%'; o.interaction = { mode: 'nearest', intersect: true }
   o.plugins.center = { text: String(total), label: caption, color: c.ink, sub: c.mute, font: c.font }
-  const color = (t: Tone) => (t === 'mute' ? rgba(c.mute, 0.45) : c[t])
+  const color = (t: Tone) => (t === 'mute' ? rgba(c.mute, 0.45) : t === 'gift' ? GIFT : c[t])
   return <div className="chart sm"><Doughnut data={{ labels, datasets: [{ data: values, backgroundColor: tones.map(color), borderColor: c.panel, borderWidth: 3, hoverOffset: 6 }] }} options={o} plugins={[centerText]} /></div>
 }
 
@@ -91,9 +93,9 @@ export function StatusDonut({ ok, low, out }: { ok: number; low: number; out: nu
 }
 
 /** Where a store's stock has gone. */
-export function StockSplit({ remaining, supplied, damaged, missing }: { remaining: number; supplied: number; damaged: number; missing: number }) {
-  if (remaining + supplied + damaged + missing === 0) return <Empty text="Your stock breakdown appears once a product is assigned." />
-  return <Donut labels={['Remaining', 'Supplied', 'Damaged', 'Missing']} values={[remaining, supplied, damaged, missing]} tones={['acc', 'mute', 'warn', 'bad']} total={remaining} caption="left in store" />
+export function StockSplit({ remaining, supplied, gifted = 0, damaged, missing }: { remaining: number; supplied: number; gifted?: number; damaged: number; missing: number }) {
+  if (remaining + supplied + gifted + damaged + missing === 0) return <Empty text="Your stock breakdown appears once a product is assigned." />
+  return <Donut labels={['Remaining', 'Supplied', 'Gifted', 'Damaged', 'Missing']} values={[remaining, supplied, gifted, damaged, missing]} tones={['acc', 'mute', 'gift', 'warn', 'bad']} total={remaining} caption="left in store" />
 }
 
 /** Remaining units per store. */
@@ -121,10 +123,10 @@ export function ForecastLines({ labels, actual, sma, ses }: { labels: string[]; 
 }
 
 /** Per product breakdown for a store manager. */
-export function ProductStack({ labels, remaining, supplied, damaged, missing }: { labels: string[]; remaining: number[]; supplied: number[]; damaged: number[]; missing: number[] }) {
+export function ProductStack({ labels, remaining, supplied, gifted, damaged, missing }: { labels: string[]; remaining: number[]; supplied: number[]; gifted?: number[]; damaged: number[]; missing: number[] }) {
   const c = useColors()
   if (!labels.length) return <Empty text="Products assigned to your store will appear here." />
   const o = base(c); o.scales = { x: scale(c, false, true), y: { ...scale(c, true, true), beginAtZero: true } }
   const ds = (label: string, data: number[], color: string) => ({ label, data, backgroundColor: color, borderRadius: 6, borderSkipped: false, maxBarThickness: 46 })
-  return <div className="chart"><Bar data={{ labels, datasets: [ds('Remaining', remaining, c.acc), ds('Supplied', supplied, rgba(c.mute, 0.45)), ds('Damaged', damaged, c.warn), ds('Missing', missing, c.bad)] }} options={o} /></div>
+  return <div className="chart"><Bar data={{ labels, datasets: [ds('Remaining', remaining, c.acc), ds('Supplied', supplied, rgba(c.mute, 0.45)), ...(gifted ? [ds('Gifted', gifted, GIFT)] : []), ds('Damaged', damaged, c.warn), ds('Missing', missing, c.bad)] }} options={o} /></div>
 }

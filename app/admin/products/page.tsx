@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Confirm, Hd, useSort } from '@/components/ui'
 import { ProductDialog, SupplyDialog, type ProdRow } from '@/components/Dialogs'
-import { logAct, q, r3, remove, sum, useLive } from '@/lib/data'
+import { fmtDay, logAct, q, r3, remove, sum, useLive } from '@/lib/data'
 
 export default function Products() {
   const { data: d, err, reload } = useLive<any>(async (sb) => ({
@@ -18,16 +18,16 @@ export default function Products() {
     const alloc = sum((d.supplies as any[]).filter((s) => s.product_id === p.id), (s) => Number(s.quantity))
     return { ...p, total: Number(p.total), damaged_offload: Number(p.damaged_offload), missing_before_offload: Number(p.missing_before_offload), net: Number(p.net), alloc, free: r3(Number(p.net) - alloc) }
   })
-  const s = useSort(rows, { name: (r) => r.name, container: (r) => r.container_no, total: (r) => r.total, net: (r) => r.net, free: (r) => r.free })
+  const s = useSort(rows, { name: (r) => r.name, container: (r) => r.container_no, arrived: (r) => r.date_arrived ?? '', total: (r) => r.total, net: (r) => r.net, free: (r) => r.free })
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
   return (<>
     <Hd title="Products" sub="Create a product from a container, then add it to a store"><button className="btn" onClick={() => setCreating(true)}>Create product</button></Hd>
     <div className="panel">
       {rows.length ? <div className="wrap"><table>
-        <thead><tr>{s.th('name', 'Product')}{s.th('container', 'Container no.')}<th>Unit</th>{s.th('total', 'Total', 'n')}<th className="n">Damaged on offload</th><th className="n">Missing before offload</th>{s.th('net', 'To be supplied', 'n')}<th className="n">In stores</th>{s.th('free', 'Not yet in a store', 'n')}<th /></tr></thead>
+        <thead><tr>{s.th('name', 'Product')}{s.th('container', 'Container no.')}{s.th('arrived', 'Date arrived')}<th>Unit</th>{s.th('total', 'Total', 'n')}<th className="n">Damaged on offload</th><th className="n">Missing before offload</th>{s.th('net', 'To be supplied', 'n')}<th className="n">In stores</th>{s.th('free', 'Not yet in a store', 'n')}<th /></tr></thead>
         <tbody>{s.rows.map((p) => <tr key={p.id}>
-          <td>{p.name}</td><td>{p.container_no}</td><td>{p.unit}</td><td className="n">{p.total}</td><td className="n">{p.damaged_offload}</td><td className="n">{p.missing_before_offload}</td>
+          <td>{p.name}</td><td>{p.container_no}</td><td>{fmtDay(p.date_arrived)}</td><td>{p.unit}</td><td className="n">{p.total}</td><td className="n">{p.damaged_offload}</td><td className="n">{p.missing_before_offload}</td>
           <td className="n"><b>{p.net}</b></td><td className="n">{p.alloc}</td><td className="n">{p.free}</td>
           <td><div className="btns"><button className="btn sm" disabled={p.free <= 0} onClick={() => setAddFor(p.id)}>Add to store</button><button className="btn ghost sm" onClick={() => setEdit(p)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(p)}>Delete</button></div></td></tr>)}</tbody>
       </table></div> : <p className="mute m-0">No products yet. Choose Create product to record your first container.</p>}

@@ -96,6 +96,17 @@ async function pushOne(item: OutboxItem): Promise<'ok' | 'conflict' | 'offline'>
       })
       if (hit === 'offline') return 'offline'
       if (hit !== 'ok') return interpret(item, hit)
+    } else if (item.kind === 'gift') {
+      const hit = await insertWithIdempotency('gifts', {
+        supply_id: item.supplyId,
+        recipient: item.payload.recipient,
+        quantity: item.payload.quantity,
+        note: item.payload.note || null,
+        client_id: item.id,
+        created_at: item.createdAt,
+      })
+      if (hit === 'offline') return 'offline'
+      if (hit !== 'ok') return interpret(item, hit)
     } else {
       const hit = await insertWithIdempotency('losses', {
         supply_id: item.supplyId,
@@ -129,7 +140,7 @@ async function duplicateRef(item: OutboxItem) {
   return (data ?? []).some((r: any) => r.client_id !== item.id)
 }
 
-async function insertWithIdempotency(table: 'sheet_rows' | 'losses', body: Record<string, unknown>): Promise<'ok' | { message: string; code?: string } | 'offline'> {
+async function insertWithIdempotency(table: 'sheet_rows' | 'losses' | 'gifts', body: Record<string, unknown>): Promise<'ok' | { message: string; code?: string } | 'offline'> {
   const sb = supabaseBrowser()
   let { error } = await sb.from(table).insert(body)
   if (error && /client_id|schema cache|column/i.test(error.message)) {
@@ -171,8 +182,9 @@ export function overlaySheet(d: any, items: OutboxItem[]) {
   const mine = items.filter((x) => x.supplyId === d.supply.id)
   const live = pendingFor(mine, d.supply.id)
   const started = d.supply.sheet_started_at || mine.some((x) => x.kind === 'start_sheet') ? (d.supply.sheet_started_at || live.find((x) => x.kind === 'start_sheet')?.createdAt || new Date().toISOString()) : null
-  let supplied = Number(d.bal.supplied), dmg = Number(d.bal.damaged_in_supply), miss = Number(d.bal.missing_in_supply)
-  const rows = [...d.rows], losses = [...d.losses]
+  // Sheets saved on a device before gifts existed have no gifts yet.
+  let supplied = Number(d.bal.supplied), gifted = Number(d.bal.gifted ?? 0), dmg = Number(d.bal.damaged_in_supply), miss = Number(d.bal.missing_in_supply)
+  const rows = [...d.rows], losses = [...d.losses], gifts = [...(d.gifts ?? [])]
   for (const x of live) {
     if (x.kind === 'sheet_row') {
       supplied += Number(x.payload.quantity)
@@ -181,18 +193,25 @@ export function overlaySheet(d: any, items: OutboxItem[]) {
       if (x.payload.lossKind === 'damaged') dmg += Number(x.payload.quantity)
       else miss += Number(x.payload.quantity)
       losses.unshift(ghostLoss(x))
+    } else if (x.kind === 'gift') {
+      gifted += Number(x.payload.quantity)
+      gifts.unshift(ghostGift(x))
     }
   }
   for (const x of mine.filter((i) => i.status === 'conflict')) {
     if (x.kind === 'sheet_row') rows.unshift({ ...ghostRow(x), conflict: x.conflict })
     if (x.kind === 'loss') losses.unshift({ ...ghostLoss(x), conflict: x.conflict })
+    if (x.kind === 'gift') gifts.unshift({ ...ghostGift(x), conflict: x.conflict })
   }
-  const remaining = Number(d.bal.assigned) - supplied - dmg - miss
-  return { ...d, supply: { ...d.supply, sheet_started_at: started }, bal: { ...d.bal, supplied, damaged_in_supply: dmg, missing_in_supply: miss, remaining }, rows, losses }
+  const remaining = Number(d.bal.assigned) - supplied - gifted - dmg - miss
+  return { ...d, supply: { ...d.supply, sheet_started_at: started }, bal: { ...d.bal, supplied, gifted, damaged_in_supply: dmg, missing_in_supply: miss, remaining }, rows, losses, gifts }
 }
 
 function ghostRow(x: OutboxItem) {
   return { id: x.id, supply_id: x.supplyId, customer: x.payload.customer, supply_ref: x.payload.supply_ref, quantity: x.payload.quantity, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }
+}
+function ghostGift(x: OutboxItem) {
+  return { id: x.id, supply_id: x.supplyId, recipient: x.payload.recipient, quantity: x.payload.quantity, note: x.payload.note, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }
 }
 function ghostLoss(x: OutboxItem) {
   return { id: x.id, supply_id: x.supplyId, kind: x.payload.lossKind, quantity: x.payload.quantity, note: x.payload.note, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }

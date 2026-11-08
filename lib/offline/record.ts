@@ -34,7 +34,7 @@ export async function recordOrQueue(
 export const browser = () => supabaseBrowser()
 
 // Older databases have no client_id yet. Insert without it rather than failing the entry.
-export async function insertEntry(table: 'sheet_rows' | 'losses', body: Record<string, unknown>) {
+export async function insertEntry(table: 'sheet_rows' | 'losses' | 'gifts', body: Record<string, unknown>) {
   const sb = supabaseBrowser()
   let res = await sb.from(table).insert(body)
   if (res.error && /client_id|schema cache|column/i.test(res.error.message)) {

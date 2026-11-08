@@ -1,7 +1,7 @@
 'use client'
 
 export type OutboxStatus = 'pending' | 'syncing' | 'conflict'
-export type OutboxKind = 'start_sheet' | 'sheet_row' | 'loss'
+export type OutboxKind = 'start_sheet' | 'sheet_row' | 'loss' | 'gift'
 export type ConflictCode = 'overdraw' | 'duplicate' | 'gone' | 'auth' | 'error'
 
 export type OutboxItem = {
@@ -17,6 +17,7 @@ export type OutboxItem = {
     supply_ref?: string
     quantity?: number
     lossKind?: 'damaged' | 'missing'
+    recipient?: string
     note?: string
     productName?: string
     force?: boolean
