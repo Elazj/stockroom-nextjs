@@ -11,7 +11,7 @@ export default function Supplies() {
     bal: await q(sb.from('supply_balance').select('*')),
     products: await q(sb.from('products').select('*')),
     stores: await q(sb.from('stores').select('id, name, active')),
-  }), ['supplies', 'sheet_rows', 'losses', 'products', 'stores'])
+  }), ['supplies', 'sheet_rows', 'losses', 'gifts', 'products', 'stores'])
   const [store, setStore] = useState('')
   const [text, setText] = useState('')
   const [adding, setAdding] = useState(false)
@@ -27,11 +27,11 @@ export default function Supplies() {
   const rows = (d?.bal ?? []).filter((b: any) => (!store || b.store_id === store) && (!text || (pm.get(b.product_id)?.name ?? '').toLowerCase().includes(text.toLowerCase())))
   const s = useSort<any>(rows, {
     store: (b) => sm.get(b.store_id) ?? '', product: (b) => pm.get(b.product_id)?.name ?? '', container: (b) => pm.get(b.product_id)?.container_no ?? '',
-    assigned: (b) => Number(b.assigned), supplied: (b) => Number(b.supplied), remaining: (b) => Number(b.remaining),
+    assigned: (b) => Number(b.assigned), supplied: (b) => Number(b.supplied), gifted: (b) => Number(b.gifted), remaining: (b) => Number(b.remaining),
   })
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
-  const startEdit = (b: any) => setEdit({ id: b.supply_id, product_id: b.product_id, store_id: b.store_id, quantity: Number(b.assigned), used: r3(Number(b.supplied) + Number(b.damaged_in_supply) + Number(b.missing_in_supply)) })
+  const startEdit = (b: any) => setEdit({ id: b.supply_id, product_id: b.product_id, store_id: b.store_id, quantity: Number(b.assigned), used: r3(Number(b.supplied) + Number(b.gifted) + Number(b.damaged_in_supply) + Number(b.missing_in_supply)) })
   const sheetRow = d.bal.find((b: any) => b.supply_id === sheet)
   return (<>
     <Hd title="Supplies" sub="Products added to stores. Remaining amounts update as managers record supplies."><button className="btn" onClick={() => setAdding(true)}>Add product to store</button></Hd>
@@ -41,10 +41,10 @@ export default function Supplies() {
     </div>
     <div className="panel">
       {s.rows.length ? <div className="wrap"><table>
-        <thead><tr>{s.th('store', 'Store')}{s.th('product', 'Product')}{s.th('container', 'Container')}{s.th('assigned', 'In store', 'n')}{s.th('supplied', 'Supplied', 'n')}<th className="n">Damaged in supply</th><th className="n">Missing in supply</th>{s.th('remaining', 'Remaining', 'n')}<th>Status</th><th /></tr></thead>
+        <thead><tr>{s.th('store', 'Store')}{s.th('product', 'Product')}{s.th('container', 'Container')}{s.th('assigned', 'In store', 'n')}{s.th('supplied', 'Supplied', 'n')}{s.th('gifted', 'Gifted', 'n')}<th className="n">Damaged in supply</th><th className="n">Missing in supply</th>{s.th('remaining', 'Remaining', 'n')}<th>Status</th><th /></tr></thead>
         <tbody>{s.rows.map((b) => <tr key={b.supply_id}>
           <td>{sm.get(b.store_id)}</td><td>{pm.get(b.product_id)?.name}</td><td>{pm.get(b.product_id)?.container_no}</td>
-          <td className="n">{b.assigned}</td><td className="n">{b.supplied}</td><td className="n">{b.damaged_in_supply}</td><td className="n">{b.missing_in_supply}</td>
+          <td className="n">{b.assigned}</td><td className="n">{b.supplied}</td><td className="n">{b.gifted}</td><td className="n">{b.damaged_in_supply}</td><td className="n">{b.missing_in_supply}</td>
           <td className="n"><b>{b.remaining}</b> {pm.get(b.product_id)?.unit}</td><td><Chip s={level(Number(b.assigned), Number(b.remaining))} /></td>
           <td><div className="btns"><button className="btn ghost sm" onClick={() => setSheet(b.supply_id)}>Sheet</button><button className="btn ghost sm" onClick={() => startEdit(b)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(b)}>Remove</button></div></td></tr>)}</tbody>
       </table></div> : <p className="mute m-0">{d.bal.length ? 'No supplies match these filters.' : 'Nothing is in a store yet. Create a product under Products, then add it to a store here.'}</p>}

@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { cacheLive } from '@/lib/offline/sync'
 
-export const SHEET_LIVE = ['supplies', 'sheet_rows', 'losses']
+export const SHEET_LIVE = ['supplies', 'sheet_rows', 'losses', 'gifts']
 export const liveCacheKey = (path: string, tables: string[]) => `${path}|${tables.join(',')}`
 
 export const num = (v: unknown) => Number(v) || 0
@@ -16,9 +16,12 @@ export type Level = 'ok' | 'low' | 'out'
 export const level = (assigned: number, remaining: number): Level => (remaining <= 0 ? 'out' : remaining <= assigned * 0.2 ? 'low' : 'ok')
 export const fmtT = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
 export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en-CA')
+// A plain date such as 2026-11-07 (no time of day), shown in the viewer's language.
+export const fmtDay = (d?: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString([], { dateStyle: 'medium' }) : '-')
 
 export const friendly = (m: string) =>
-  /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.'
+  /(gifts|companies|company_id|date_arrived|supply_balance|gifted)/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-007.sql in the Supabase SQL editor, then reload.'
+  : /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.'
   : /permission denied/i.test(m) ? 'The database is missing a permission grant. Run supabase/repair.sql (or migration-005.sql) in the Supabase SQL editor, then reload.'
   : m
 
@@ -75,13 +78,14 @@ export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: str
 }
 
 export async function loadSheet(sb: SupabaseClient, id: string) {
-  const [supply, bal, rows, losses] = await Promise.all([
+  const [supply, bal, rows, losses, gifts] = await Promise.all([
     q(sb.from('supplies').select('*, products(name, container_no, unit), stores(name)').eq('id', id).single()),
     q(sb.from('supply_balance').select('*').eq('supply_id', id).single()),
     q(sb.from('sheet_rows').select('*, profiles(full_name)').eq('supply_id', id).order('created_at', { ascending: false })),
     q(sb.from('losses').select('*, profiles(full_name)').eq('supply_id', id).order('created_at', { ascending: false })),
+    q(sb.from('gifts').select('*, profiles(full_name)').eq('supply_id', id).order('created_at', { ascending: false })),
   ])
-  return { supply, bal, rows: rows as any[], losses: losses as any[] }
+  return { supply, bal, rows: rows as any[], losses: losses as any[], gifts: gifts as any[] }
 }
 
 export const csv = (rows: (string | number)[][]) =>
@@ -102,7 +106,9 @@ export function downloadSheet(d: any) {
     ...[...d.rows].reverse().map((r: any) => [fmtT(r.created_at), r.customer, r.supply_ref, r.quantity, r.profiles?.full_name ?? '']), [],
     ['Damaged or missing during supply'], ['Date', 'Type', 'Quantity', 'Note', 'Entered by'],
     ...[...d.losses].reverse().map((l: any) => [fmtT(l.created_at), l.kind, l.quantity, l.note ?? '', l.profiles?.full_name ?? '']), [],
-    ['Supplied to customers', b.supplied], ['Damaged during supply', b.damaged_in_supply], ['Missing during supply', b.missing_in_supply], ['Remaining in store', b.remaining],
+    ['Gifts'], ['Date', 'Gifted to', 'Quantity', 'Note', 'Entered by'],
+    ...[...(d.gifts ?? [])].reverse().map((g: any) => [fmtT(g.created_at), g.recipient, g.quantity, g.note ?? '', g.profiles?.full_name ?? '']), [],
+    ['Supplied to customers', b.supplied], ['Gifted', b.gifted ?? 0], ['Damaged during supply', b.damaged_in_supply], ['Missing during supply', b.missing_in_supply], ['Remaining in store', b.remaining],
   ]
   const clean = (x: string) => x.replace(/[^\w\- ]+/g, '').trim()
   download(`${clean(p.name) || 'sheet'} - ${clean(s.stores.name)}.csv`, csv(rows))

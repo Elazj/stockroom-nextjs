@@ -19,7 +19,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     setBusy(false)
     if (error) {
       return setErr(/could not find the function|schema cache/i.test(error.message)
-        ? 'The reset function is missing or outdated in your database. Run supabase/migration-003.sql in the Supabase SQL editor, then try again.'
+        ? 'The reset function is missing or outdated in your database. Run supabase/migration-007.sql in the Supabase SQL editor, then try again.'
         : error.message)
     }
     toast('Everything has been cleared')
@@ -27,9 +27,9 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     onClose()
   }
   return (<>
-    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, report and activity record. It cannot be undone.</p>
+    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, gift, report and activity record of your company. Other companies are not affected. It cannot be undone.</p>
     <label className="flex items-center gap-2">
-      <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all other user accounts
+      <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all store manager accounts of this company
     </label>
     <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
     <p className="err" role="alert">{err}</p>
@@ -75,9 +75,10 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
     (async () => {
       const sb = supabaseBrowser()
       const { data: { user } } = await sb.auth.getUser()
-      const p = await q(sb.from('profiles').select('full_name, role, store_id').eq('id', user?.id ?? '').single())
+      const p = await q(sb.from('profiles').select('full_name, role, store_id, companies(name)').eq('id', user?.id ?? '').single())
       const store = p.store_id ? (await q(sb.from('stores').select('name').eq('id', p.store_id).single())).name : ''
-      setMe({ email: user?.email ?? '', ...p, store })
+      const co = p.companies
+      setMe({ email: user?.email ?? '', ...p, store, company: (Array.isArray(co) ? co[0]?.name : co?.name) ?? '' })
     })().catch(() => setMe({ email: '', full_name: '', role, store: '' }))
   }, [role])
   return (<>
@@ -87,6 +88,7 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
         {me ? <dl className="dl">
           <dt>Name</dt><dd>{me.full_name || '-'}</dd>
           <dt>Email</dt><dd>{me.email || '-'}</dd>
+          <dt>Company</dt><dd>{me.company || '-'}</dd>
           <dt>Account type</dt><dd>{role === 'admin' ? 'Admin' : 'Store manager'}</dd>
           {role === 'manager' ? <><dt>Store</dt><dd>{me.store || '-'}</dd></> : null}
         </dl> : <p className="mute">Loading…</p>}
@@ -102,7 +104,7 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
       </div>
       {role === 'admin' ? (
         <div className="panel zone"><h2>Danger zone</h2>
-          <p className="mute mt-0">Clear every store, product, supply, sheet and report. Use this to start fresh.</p>
+          <p className="mute mt-0">Clear every store, product, supply, sheet, gift and report of your company. Use this to start fresh.</p>
           <ResetData />
         </div>
       ) : null}

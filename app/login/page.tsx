@@ -8,12 +8,12 @@ import { btn, cx, err, errBase, panel } from '@/lib/tw'
 
 type Conn = 'checking' | 'ok' | 'missing' | 'unreachable' | 'badkey'
 const NET = /failed to fetch|networkerror|load failed|fetch failed/i
+const COMPANY_EXISTS = 'Account/company name already exists. Choose a different company name.'
 
 export default function Login() {
   const sb = supabaseBrowser()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const [f, setF] = useState({ name: '', email: '', pw: '', pw2: '', role: 'manager', store: '' })
-  const [stores, setStores] = useState<{ id: string; name: string; accounts: number }[]>([])
+  const [f, setF] = useState({ name: '', company: '', email: '', pw: '', pw2: '' })
   const [msg, setMsg] = useState('')
   const [good, setGood] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -25,12 +25,18 @@ export default function Login() {
     fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_KEY } })
       .then((r) => setConn(r.status === 401 || r.status === 403 ? 'badkey' : 'ok'))
       .catch(() => setConn('unreachable'))
-    sb.rpc('open_stores').then((r: any) => setStores(r?.data ?? []), () => {})
   }, [])
 
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value })
   const bad = (m: string) => { setGood(false); setMsg(NET.test(m) ? 'Cannot reach the server. See the red notice above for what to check.' : m) }
   const host = SUPABASE_URL.replace(/^https?:\/\//, '')
+  const tidy = (v: string) => v.trim().replace(/\s+/g, ' ')
+
+  // Asks the database whether another company already uses this name.
+  async function companyTaken(name: string) {
+    try { const { data, error } = await sb.rpc('company_name_taken', { p_name: name }); return !error && data === true }
+    catch { return false }
+  }
 
   async function submit() {
     setMsg(''); setBusy(true)
@@ -44,14 +50,21 @@ export default function Login() {
         return
       }
       if (f.name.trim().length < 2) return bad('Enter your full name.')
+      const company = tidy(f.company)
+      if (company.length < 2) return bad('Enter your company or business name.')
+      if (company.length > 80) return bad('The company name can have at most 80 characters.')
       const e = pwErr(f.pw); if (e) return bad(e)
       if (f.pw !== f.pw2) return bad('Passwords do not match.')
-      if (f.role === 'manager' && !f.store) return bad('Choose your store.')
+      if (await companyTaken(company)) return bad(COMPANY_EXISTS)
       const { error } = await sb.auth.signUp({
         email, password: f.pw,
-        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: f.role, store_id: f.role === 'manager' ? f.store : '' } },
+        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: 'admin', company_name: company } },
       })
-      if (error) return bad(error.message)
+      if (error) {
+        // The database refuses a second company with the same name, even if two people try at the same moment.
+        if (/database error saving new user/i.test(error.message)) return bad((await companyTaken(company)) ? COMPANY_EXISTS : 'Could not create the account. Try again in a moment.')
+        return bad(error.message)
+      }
       setGood(true); setMsg('Check your inbox and confirm your email, then log in.')
     } catch (err: any) {
       bad(err?.message ?? 'Something went wrong. Try again.')
@@ -78,25 +91,22 @@ export default function Login() {
           <button className={tab(!signup)} onClick={() => { setMode('login'); setMsg('') }}>Log in</button>
           <button className={tab(signup)} onClick={() => { setMode('signup'); setMsg('') }}>Sign up</button>
         </div>
+        {signup && <p className="-mt-1 mb-3 text-[13px] text-mute">Create the admin account for your company. Each company has one admin, who then creates the store manager accounts from the Team page.</p>}
         {signup && <label>Full name<input value={f.name} onChange={set('name')} autoComplete="name" /></label>}
+        {signup && <label>Company / business name
+          <input value={f.company} onChange={set('company')} placeholder="Company / business name" maxLength={80} autoComplete="organization"
+            onBlur={async () => { const c = tidy(f.company); if (c.length >= 2 && await companyTaken(c)) bad(COMPANY_EXISTS) }} /></label>}
         <label>Email<input type="email" value={f.email} onChange={set('email')} autoComplete="email" /></label>
-        {signup && (<>
-          <label>Account type
-            <select value={f.role} onChange={set('role')}><option value="manager">Store manager</option><option value="admin">Admin</option></select></label>
-          {f.role === 'manager' && <label>Your store (up to 3 accounts each)
-            <select value={f.store} onChange={set('store')}>
-              <option value="">{stores.length ? 'Choose a store' : 'No stores yet'}</option>
-              {stores.map((s) => <option key={s.id} value={s.id} disabled={s.accounts >= 3}>{s.name} ({s.accounts}/3 accounts)</option>)}
-            </select></label>}
-        </>)}
         <label>Password<input type="password" value={f.pw} onChange={set('pw')} autoComplete={signup ? 'new-password' : 'current-password'} /></label>
         {signup && <>
           <p className="-mt-1.5 mb-2.5 text-xs text-mute">At least 8 characters with upper and lower case letters, a number and a symbol.</p>
           <label>Confirm password<input type="password" value={f.pw2} onChange={set('pw2')} autoComplete="new-password" /></label></>}
         <p role="alert" className={cx(errBase, good ? 'text-acc' : 'text-bad')}>{msg}</p>
         <button className={btn('primary', 'md', true)} disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
-        <div className="my-3 text-center text-[13px] text-mute">or</div>
-        <button className={btn('ghost', 'md', true)} onClick={google}>Continue with Google</button>
+        {!signup && <>
+          <div className="my-3 text-center text-[13px] text-mute">or</div>
+          <button className={btn('ghost', 'md', true)} onClick={google}>Continue with Google</button>
+        </>}
       </div>
     </main>
   )

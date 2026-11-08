@@ -3,7 +3,7 @@ import { downloadSheet, fmtT, loadSheet, useLive } from '@/lib/data'
 import { useSort } from '@/components/ui'
 import InvoiceSearch from '@/components/InvoiceSearch'
 
-export function SheetTables({ rows, losses }: { rows: any[]; losses: any[] }) {
+export function SheetTables({ rows, losses, gifts = [] }: { rows: any[]; losses: any[]; gifts?: any[] }) {
   const s = useSort(rows, { date: (r) => r.created_at, customer: (r) => r.customer, ref: (r) => r.supply_ref, qty: (r) => Number(r.quantity) }, { k: 'date', d: -1 })
   return (<>
     <h2>Supplies to customers</h2>
@@ -20,6 +20,13 @@ export function SheetTables({ rows, losses }: { rows: any[]; losses: any[] }) {
         <tbody>{losses.map((l) => <tr key={l.id}><td>{fmtT(l.created_at)}</td><td>{l.kind === 'damaged' ? 'Damaged' : 'Missing'}{l.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{l.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td className="n">{l.quantity}</td><td className="w">{l.note ?? ''}</td><td>{l.profiles?.full_name ?? ''}</td></tr>)}</tbody>
       </table></div>
     ) : <p className="mute m-0">None recorded.</p>}
+    <h2 className="mt-[18px]">Gifts</h2>
+    {gifts.length ? (
+      <div className="wrap"><table>
+        <thead><tr><th>Date</th><th>Gifted to</th><th className="n">Qty</th><th>Note</th><th>By</th></tr></thead>
+        <tbody>{gifts.map((g) => <tr key={g.id}><td>{fmtT(g.created_at)}</td><td>{g.recipient}{g.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{g.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td className="n">{g.quantity}</td><td className="w">{g.note ?? ''}</td><td>{g.profiles?.full_name ?? ''}</td></tr>)}</tbody>
+      </table></div>
+    ) : <p className="mute m-0">No gifts recorded.</p>}
   </>)
 }
 
@@ -33,9 +40,9 @@ export function AdminSheet({ supplyId, onClose, onOpen }: { supplyId: string; on
     <InvoiceSearch onOpen={onOpen} />
     <p className="mute mt-0">
       {s.sheet_started_at ? `Sheet started ${fmtT(s.sheet_started_at)}. ` : 'The store manager has not started a sheet yet. '}
-      Assigned to store {s.quantity}, supplied {b.supplied}, damaged {b.damaged_in_supply}, missing {b.missing_in_supply}. <b>Remaining {b.remaining} {u}</b>
+      Assigned to store {s.quantity}, supplied {b.supplied}, gifted {b.gifted ?? 0}, damaged {b.damaged_in_supply}, missing {b.missing_in_supply}. <b>Remaining {b.remaining} {u}</b>
     </p>
-    <SheetTables rows={d.rows} losses={d.losses} />
+    <SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} />
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Close</button><button className="btn" onClick={() => downloadSheet(d)}>Download CSV</button></div>
   </>)
 }

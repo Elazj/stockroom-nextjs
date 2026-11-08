@@ -19,6 +19,8 @@ export default function SheetPage() {
   const [l, setL] = useState({ kind: 'damaged' as 'damaged' | 'missing', qty: '', note: '' })
   const [re, setRe] = useState('')
   const [le, setLe] = useState('')
+  const [g, setG] = useState({ to: '', qty: '', note: '' })
+  const [ge, setGe] = useState('')
   if (err) return <div><p className="err">{err}</p><Link href="/manager/entry">Back to sheets</Link></div>
   if (!raw) return <p className="mute">Loading…</p>
   const d = overlaySheet(raw, items)
@@ -64,6 +66,23 @@ export default function SheetPage() {
     else { await logAct(`${p.name}: ${qty} ${p.unit} ${l.kind === 'damaged' ? 'damaged' : 'missing'} during supply at ${s.stores?.name ?? 'the store'}`); toast('Recorded') }
     setL({ kind: l.kind, qty: '', note: '' }); reload()
   }
+  async function addGift() {
+    const qty = qn(g.qty), to = g.to.trim(), note = g.note.trim()
+    if (!to) return setGe('Enter who the gift was given to.')
+    if (!qty) return setGe('Enter a quantity above zero.')
+    if (qty > rem) return setGe(`Only ${rem} ${p.unit} left in the store.`)
+    setGe('')
+    const clientId = crypto.randomUUID()
+    const log = `${p.name}: gifted ${qty} ${p.unit} to ${to} from ${s.stores?.name ?? 'the store'}`
+    const hit = await recordOrQueue({
+      id: clientId, kind: 'gift', supplyId: id, log,
+      payload: { recipient: to, quantity: qty, note, productName: p.name },
+    }, () => insertEntry('gifts', { supply_id: id, recipient: to, quantity: qty, note: note || null, client_id: clientId }))
+    if (!hit.ok) return setGe(hit.message)
+    if (hit.queued) toast('Saved on this device. It will sync when you are back online.')
+    else { await logAct(log); toast('Gift recorded') }
+    setG({ to: '', qty: '', note: '' }); reload()
+  }
 
   return (<>
     <Hd title={`Sheet: ${p.name}`} sub={`${s.stores?.name ?? 'Your store'}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}${online ? '' : ' · offline'}`}>
@@ -71,7 +90,7 @@ export default function SheetPage() {
       {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(d)}>Download sheet</button> : null}
     </Hd>
     <div className="panel strip">
-      {([[b.assigned, 'Assigned to this store'], [b.supplied, 'Supplied to customers'], [b.damaged_in_supply, 'Damaged in supply'], [b.missing_in_supply, 'Missing in supply'], [b.remaining, 'Remaining in store']] as [number, string][]).map(([v, t]) => <div key={t}><b>{v}</b><span>{t}</span></div>)}
+      {([[b.assigned, 'Assigned to this store'], [b.supplied, 'Supplied to customers'], [b.gifted ?? 0, 'Gifted'], [b.damaged_in_supply, 'Damaged in supply'], [b.missing_in_supply, 'Missing in supply'], [b.remaining, 'Remaining in store']] as [number, string][]).map(([v, t]) => <div key={t}><b>{v}</b><span>{t}</span></div>)}
     </div>
     {!s.sheet_started_at ? (
       <div className="panel"><p className="mt-0">This sheet has not been created yet.</p><button className="btn sm" onClick={start}>Create sheet</button></div>
@@ -88,8 +107,14 @@ export default function SheetPage() {
           <label>Quantity ({p.unit})<input type="number" min="0" step="any" value={l.qty} onChange={(e) => setL({ ...l, qty: e.target.value })} /></label>
           <label>Note (optional)<input value={l.note} maxLength={120} onChange={(e) => setL({ ...l, note: e.target.value })} /></label>
           <p className="err" role="alert">{le}</p><button className="btn" onClick={addLoss}>Record</button></div>
+        <div className="panel"><h2>Record a gift</h2>
+          <p className="mute mt-0">For products you give away instead of selling. A gift is taken off the stock left in the store.</p>
+          <label>Gifted to (name)<input value={g.to} maxLength={80} onChange={(e) => setG({ ...g, to: e.target.value })} /></label>
+          <label>Quantity gifted ({p.unit})<input type="number" min="0" step="any" value={g.qty} onChange={(e) => setG({ ...g, qty: e.target.value })} /></label>
+          <label>Note (optional)<input value={g.note} maxLength={120} onChange={(e) => setG({ ...g, note: e.target.value })} /></label>
+          <p className="err" role="alert">{ge}</p><button className="btn" onClick={addGift}>Record gift</button></div>
       </div>
-      <div className="panel"><SheetTables rows={d.rows} losses={d.losses} /></div>
+      <div className="panel"><SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} /></div>
     </>)}
   </>)
 }

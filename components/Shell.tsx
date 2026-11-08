@@ -22,7 +22,7 @@ function OpenReports() {
   return data ? <span className="ml-auto rounded-full bg-bad px-[7px] text-[11px] text-white">{data}</span> : null
 }
 
-export default function Shell({ role, name, sub, children }: { role: 'admin' | 'manager'; name: string; sub?: string; children: ReactNode }) {
+export default function Shell({ role, name, sub, company, children }: { role: 'admin' | 'manager'; name: string; sub?: string; company?: string; children: ReactNode }) {
   const path = usePathname()
   const [open, setOpen] = useState(false) // side bar on small screens
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
@@ -73,6 +73,7 @@ export default function Shell({ role, name, sub, children }: { role: 'admin' | '
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
         </div>
+        {company ? <div className="-mt-2 mb-3 truncate px-2 text-[13px] font-semibold text-mute" title={company}>{company}</div> : null}
         <nav className="flex flex-col gap-0.5">
           {NAV[role].map(([h, l]) => (
             <Link key={h} href={h} className={linkCls(on(h))}>{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}</Link>

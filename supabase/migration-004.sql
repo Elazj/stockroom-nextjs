@@ -1,3 +1,5 @@
+-- WARNING: do NOT run this file once migration-007.sql has been run. It replaces functions or security rules
+-- that migration-007 made company-aware, and would undo the separation between companies.
 -- Run ONCE in the Supabase SQL editor (new query tab). Adds what the Team page needs.
 -- (New projects do not need it: schema.sql already includes it.)
 
