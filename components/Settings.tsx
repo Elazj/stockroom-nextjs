@@ -45,6 +45,40 @@ function ResetData() {
   </>)
 }
 
+function DeleteAccountBody({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  async function go() {
+    if (text.trim() !== 'DELETE') return setErr('Type DELETE to confirm.')
+    setBusy(true); setErr('')
+    const sb = supabaseBrowser()
+    const { error } = await sb.rpc('delete_my_account')
+    if (error) {
+      setBusy(false)
+      return setErr(/could not find the function|schema cache/i.test(error.message)
+        ? 'The database is missing this update. Run supabase/migration-008.sql in the Supabase SQL editor, then try again.'
+        : error.message)
+    }
+    try { await sb.auth.signOut({ scope: 'local' }) } catch {}
+    location.href = '/login'
+  }
+  return (<>
+    <p className="mute mt-0">This permanently deletes your admin account, your company and everything in it: stores, products, supplies, sheet entries, gifts, reports and activity. It also deletes every store manager account you created, so their logins stop working. It cannot be undone. Afterwards you can sign up again, even with the same company name.</p>
+    <label>Type DELETE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <p className="err" role="alert">{err}</p>
+    <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Deleting…' : 'Delete my account'}</button></div>
+  </>)
+}
+
+function DeleteAccount() {
+  const [open, setOpen] = useState(false)
+  return (<>
+    <button className="btn danger sm" onClick={() => setOpen(true)}>Delete account</button>
+    <Modal open={open} title="Delete account" onClose={() => setOpen(false)}><DeleteAccountBody onClose={() => setOpen(false)} /></Modal>
+  </>)
+}
+
 function Password() {
   const [a, setA] = useState('')
   const [b, setB] = useState('')
@@ -106,6 +140,8 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
         <div className="panel zone"><h2>Danger zone</h2>
           <p className="mute mt-0">Clear every store, product, supply, sheet, gift and report of your company. Use this to start fresh.</p>
           <ResetData />
+          <p className="mute mb-2 mt-4">Delete your admin account, your company, all its data and all your store manager accounts, to start over from the sign-up page.</p>
+          <DeleteAccount />
         </div>
       ) : null}
     </div>
