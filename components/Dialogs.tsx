@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
+import { useSettings } from '@/components/SettingsProvider'
 import { act, localDay, logAct, num, r3 } from '@/lib/data'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
@@ -9,7 +10,8 @@ export type StoreRow = { id: string; name: string; active: boolean }
 export type SupplyEdit = { id: string; product_id: string; store_id: string; quantity: number; used: number }
 
 function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose: () => void; onSaved: () => void }) {
-  const [f, setF] = useState({ name: product?.name ?? '', container: product?.container_no ?? '', arrived: product?.date_arrived ?? localDay(new Date()), unit: product?.unit ?? '', total: product ? String(product.total) : '', dmg: String(product?.damaged_offload ?? 0), miss: String(product?.missing_before_offload ?? 0) })
+  const settings = useSettings() // default unit and whether the arrival date is required
+  const [f, setF] = useState({ name: product?.name ?? '', container: product?.container_no ?? '', arrived: product?.date_arrived ?? localDay(new Date()), unit: product?.unit ?? settings.defaultUnit, total: product ? String(product.total) : '', dmg: String(product?.damaged_offload ?? 0), miss: String(product?.missing_before_offload ?? 0) })
   const [err, setErr] = useState('')
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value })
   const net = r3(num(f.total) - num(f.dmg) - num(f.miss))
@@ -17,14 +19,14 @@ function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose
     const name = f.name.trim(), cont = f.container.trim(), t = Number(f.total), d = Number(f.dmg) || 0, m = Number(f.miss) || 0
     if (!name) return setErr('Enter a product name.')
     if (!cont) return setErr('Enter the container number.')
-    if (!f.arrived) return setErr('Enter the date the product arrived.')
+    if (!f.arrived && settings.requireArrival) return setErr('Enter the date the product arrived.')
     if (f.arrived > localDay(new Date())) return setErr('The arrival date cannot be in the future.')
     if (!(t > 0)) return setErr('Enter the total amount.')
     if (d < 0 || m < 0) return setErr('Damaged and missing amounts cannot be negative.')
     if (t - d - m <= 0) return setErr('Nothing is left to supply after the damaged and missing amounts.')
     if (product && r3(t - d - m) < product.alloc) return setErr(`${product.alloc} ${product.unit} is already in stores, more than ${r3(t - d - m)}.`)
-    const unit = f.unit.trim() || 'pieces'
-    const row = { name, container_no: cont, date_arrived: f.arrived, unit, total: t, damaged_offload: d, missing_before_offload: m }
+    const unit = f.unit.trim() || settings.defaultUnit
+    const row = { name, container_no: cont, date_arrived: f.arrived || localDay(new Date()), unit, total: t, damaged_offload: d, missing_before_offload: m }
     const sb = supabaseBrowser()
     const ok = product
       ? await act(sb.from('products').update(row).eq('id', product.id), 'Product updated', setErr)
@@ -36,7 +38,7 @@ function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose
   return (<>
     <label>Product name<input value={f.name} onChange={set('name')} maxLength={80} /></label>
     <label>Container number<input value={f.container} onChange={set('container')} maxLength={40} /></label>
-    <label>Date arrived<input type="date" value={f.arrived} max={localDay(new Date())} onChange={set('arrived')} /></label>
+    <label>Date arrived{settings.requireArrival ? '' : ' (optional)'}<input type="date" value={f.arrived} max={localDay(new Date())} onChange={set('arrived')} /></label>
     <label>Unit (carton, kg, liters, pieces)<input value={f.unit} onChange={set('unit')} maxLength={20} /></label>
     <label>Total amount in the container<input type="number" min="0" step="any" value={f.total} onChange={set('total')} /></label>
     <label>Damaged on offload<input type="number" min="0" step="any" value={f.dmg} onChange={set('dmg')} /></label>

@@ -10,7 +10,7 @@ export const metadata = { title: 'Stockroom', description: 'Multi-store stock ma
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#1673BB' }
 
 // Runs before first paint so a saved dark or light choice never flashes the wrong theme.
-const themeScript = `try{var t=localStorage.getItem('stockroom-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`
+const themeScript = `try{var t=localStorage.getItem('stockroom-theme');if(t)document.documentElement.dataset.theme=t;if(localStorage.getItem('stockroom-compact')==='1')document.documentElement.dataset.compact='1'}catch(e){}`
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (

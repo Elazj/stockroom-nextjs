@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui'
 import { Kpi } from '@/components/Kpi'
+import Notices from '@/components/Notices'
 import { ProductStack, StockSplit } from '@/components/charts'
 import { fmtT, level, q, sum, useLive } from '@/lib/data'
 
@@ -25,6 +26,7 @@ export default function ManagerDashboard() {
       <div>{d.company ? <div className="mb-1 text-[13px] font-semibold uppercase tracking-wider opacity-90">{d.company}</div> : null}<h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
       <span className="live-pill"><i />Live</span>
     </div>
+    <Notices role="manager" />
     <div className="kpis">
       <Kpi icon="box" label="Products to supply" value={d.supplies.length} />
       <Kpi icon="send" label="Supplied to customers" value={n('supplied')} />

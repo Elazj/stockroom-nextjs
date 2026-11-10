@@ -1,6 +1,7 @@
 'use client'
 import { Chip } from '@/components/ui'
 import { Kpi } from '@/components/Kpi'
+import Notices from '@/components/Notices'
 import { SupplyLossChart, StatusDonut, StoreBars, TopBars } from '@/components/charts'
 import { fmtT, level, localDay, q, sum, useLive } from '@/lib/data'
 
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
       <span className="live-pill"><i />Live</span>
     </div>
     {!d.stores.length || !B.length ? <div className="panel mb-4"><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
+    <Notices role="admin" />
     <div className="kpis">
       <Kpi icon="store" label="Active stores" value={d.stores.filter((s: any) => s.active).length} />
       <Kpi icon="box" label="Products" value={P.length} />
@@ -54,7 +56,7 @@ export default function AdminDashboard() {
       <Kpi icon="layers" label="Units in stores" value={sum(B, (b) => Number(b.assigned))} />
       <Kpi icon="send" label="Supplied to customers" value={sum(B, (b) => Number(b.supplied))} />
       <Kpi icon="gift" label="Gifted" value={sum(B, (b) => Number(b.gifted))} />
-      <Kpi icon="alert" label="Damaged on offload" value={damagedOffload} tone={damagedOffload ? 'warn' : undefined} />
+      <Kpi icon="alert" label="Damaged during offload" value={damagedOffload} tone={damagedOffload ? 'warn' : undefined} />
       <Kpi icon="alert" label="Damaged during supply" value={damagedSupply} tone={damagedSupply ? 'warn' : undefined} />
       <Kpi icon="alert" label="Missing on offload" value={missingOffload} tone={missingOffload ? 'warn' : undefined} />
       <Kpi icon="alert" label="Missing during supply" value={missingSupply} tone={missingSupply ? 'warn' : undefined} />

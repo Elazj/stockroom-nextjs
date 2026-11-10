@@ -1,10 +1,11 @@
 -- Stockroom schema. Paste into the Supabase SQL editor and run once (new projects only).
--- Already ran an older version? Run migration-002.sql to migration-007.sql (each once, only if not yet run).
+-- Already ran an older version? Run the applicable migration-002.sql through migration-011.sql files.
 -- Every company has exactly one admin; all data is separated per company.
 
 create table companies (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(btrim(name)) between 2 and 80),
+  settings jsonb not null default '{}'::jsonb,
   created_at timestamptz default now()
 );
 -- Company names are unique, ignoring capital letters and extra spaces
@@ -129,6 +130,30 @@ grant execute on function is_admin() to authenticated;
 grant execute on function my_store() to authenticated;
 grant execute on function my_company() to authenticated;
 grant execute on function product_in_my_company(uuid) to authenticated;
+
+-- Admins can correct their company name and update company-wide settings.
+create function update_company_settings(p_name text default null, p_settings jsonb default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  cid uuid := my_company();
+  nm text := left(regexp_replace(btrim(coalesce(p_name, '')), '\s+', ' ', 'g'), 80);
+begin
+  if not is_admin() or cid is null then
+    raise exception 'Only an admin can change the company settings';
+  end if;
+  if p_name is not null then
+    if char_length(nm) < 2 then raise exception 'Enter the company or business name'; end if;
+    begin
+      update companies set name = nm where id = cid;
+    exception when unique_violation then
+      raise exception 'Account/company name already exists';
+    end;
+  end if;
+  if p_settings is not null then
+    update companies set settings = settings || p_settings where id = cid;
+  end if;
+end $$;
+grant execute on function update_company_settings(text, jsonb) to authenticated;
 
 alter table stores       alter column company_id set default my_company();
 alter table products     alter column company_id set default my_company();

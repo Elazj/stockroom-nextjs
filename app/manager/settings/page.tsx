@@ -1,2 +1,2 @@
-import Settings from '@/components/Settings'
-export default function ManagerSettings() { return <Settings role="manager" /> }
+import { redirect } from 'next/navigation'
+export default function ManagerSettings() { redirect('/manager/settings/notifications') }
