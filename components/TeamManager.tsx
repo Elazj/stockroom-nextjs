@@ -1,10 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { Confirm, Hd, Modal } from '@/components/ui'
-import { act, logAct, q, toast, useLive } from '@/lib/data'
+import { logAct, q, toast, useLive } from '@/lib/data'
 import { accountsApi, listManagerAccounts } from '@/lib/accounts'
 import { emailOk, genPassword, pwErr } from '@/lib/validate'
-import { supabaseBrowser } from '@/lib/supabase/client'
 import { btn, chip, chipOut, cx, err, panel } from '@/lib/tw'
 
 type Person = { id: string; full_name: string; email: string | null; store_id: string | null; disabled: boolean }
@@ -126,9 +125,11 @@ export default function TeamManager({ embedded = false }: { embedded?: boolean }
 
   async function move(p: Person, storeId: string) {
     if (!storeId || storeId === p.store_id) return
-    if (await act(supabaseBrowser().from('profiles').update({ store_id: storeId }).eq('id', p.id), `${p.full_name} now works at ${sName(storeId)}`)) {
-      await logAct(`Moved ${p.full_name} to ${sName(storeId)}`); reload()
-    }
+    const error = await accountsApi('PATCH', { id: p.id, action: 'store', storeId })
+    if (error) return toast(error)
+    toast(`${p.full_name} now works at ${sName(storeId)}`)
+    await logAct(`Moved ${p.full_name} to ${sName(storeId)}`)
+    reload()
   }
 
   return (<>

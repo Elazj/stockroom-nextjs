@@ -17,6 +17,24 @@ async function guard(): Promise<{ error: string; status: number } | { ok: true; 
 }
 async function body(req: Request) { try { return await req.json() } catch { return {} } }
 
+async function syncStoreManagers(admin: ReturnType<typeof supabaseAdmin>, companyId: string, storeIds: (string | null)[]) {
+  for (const storeId of [...new Set(storeIds.filter((id): id is string => !!id))]) {
+    const { data: managers, error: managersError } = await admin.from('profiles')
+      .select('full_name')
+      .eq('company_id', companyId)
+      .eq('store_id', storeId)
+      .eq('role', 'manager')
+      .order('full_name')
+    if (managersError) return managersError
+    const { error } = await admin.from('stores')
+      .update({ manager_name: (managers ?? []).map((p) => p.full_name).join(', ') || null })
+      .eq('id', storeId)
+      .eq('company_id', companyId)
+    if (error) return error
+  }
+  return null
+}
+
 // List only managers belonging to the signed-in admin's company.
 export async function GET() {
   const g = await guard(); if ('error' in g) return fail(g.error, g.status)
@@ -79,6 +97,8 @@ export async function POST(req: Request) {
     const detail = cleanupError ? ` The Auth account could not be removed (${cleanupError.message}).` : ''
     return fail(`Could not link the new account to this company: ${profileError.message}.${detail}`, 500)
   }
+  const syncError = await syncStoreManagers(admin, g.companyId, [storeId])
+  if (syncError) return fail(`The manager account was created, but the store's manager names could not be refreshed: ${syncError.message}`, 500)
   return NextResponse.json({ id: data.user?.id })
 }
 
@@ -88,12 +108,27 @@ export async function PATCH(req: Request) {
   const b: any = await body(req)
   const id = String(b.id ?? ''), action = String(b.action ?? '')
   let admin; try { admin = supabaseAdmin() } catch (e: any) { return fail(e.message, 500) }
-  const { data: target } = await admin.from('profiles').select('id, role, company_id').eq('id', id).single()
+  const { data: target } = await admin.from('profiles').select('id, role, company_id, store_id').eq('id', id).single()
   if (!target || target.role !== 'manager' || target.company_id !== g.companyId) return fail('Only store manager accounts of your company can be changed here.')
   if (action === 'password') {
     const password = String(b.password ?? ''); const pe = pwErr(password); if (pe) return fail(pe)
     const { error } = await admin.auth.admin.updateUserById(id, { password })
     return error ? fail(error.message) : NextResponse.json({ ok: true })
+  }
+  if (action === 'store') {
+    const storeId = String(b.storeId ?? '')
+    const { data: store } = await admin.from('stores').select('id, name, active')
+      .eq('id', storeId).eq('company_id', g.companyId).single()
+    if (!store || !store.active) return fail('Choose an active store.')
+    const { count, error: countError } = await admin.from('profiles').select('id', { count: 'exact', head: true })
+      .eq('store_id', storeId).eq('role', 'manager').neq('id', id)
+    if (countError) return fail(countError.message, 500)
+    if ((count ?? 0) >= 3) return fail(`${store.name} already has 3 accounts.`)
+    const { error } = await admin.from('profiles').update({ store_id: storeId }).eq('id', id).eq('company_id', g.companyId)
+    if (error) return fail(error.message, 500)
+    const syncError = await syncStoreManagers(admin, g.companyId, [target.store_id, storeId])
+    if (syncError) return fail(`Manager assigned, but store manager names could not be refreshed: ${syncError.message}`, 500)
+    return NextResponse.json({ ok: true })
   }
   if (action === 'disable' || action === 'enable') {
     const off = action === 'disable'

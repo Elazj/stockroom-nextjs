@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { Confirm, Hd, Modal } from '@/components/ui'
-import { act, logAct, q, remove, sum, useLive } from '@/lib/data'
-import { listManagerAccounts } from '@/lib/accounts'
+import { act, friendly, logAct, q, remove, sum, toast, useLive } from '@/lib/data'
+import { accountsApi, listManagerAccounts } from '@/lib/accounts'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 export default function Stores() {
@@ -20,7 +20,22 @@ export default function Stores() {
     if (!name) return setMsg('Enter a store name.')
     const manager = d.profiles.find((p: any) => p.id === f.managerId)
     if (d.profiles.length && !manager) return setMsg('Choose a team member to manage this store.')
-    if (!(await act(supabaseBrowser().from('stores').insert({ name, location: f.loc.trim() || null, manager_name: manager?.full_name ?? null }), 'Store added', setMsg))) return
+    const sb = supabaseBrowser()
+    const { data: store, error } = await sb.from('stores')
+      .insert({ name, location: f.loc.trim() || null, manager_name: null })
+      .select('id')
+      .single()
+    if (error) return setMsg(friendly(error.message))
+    if (!store) return setMsg('The store could not be confirmed as saved. Refresh the page before trying again.')
+    if (manager) {
+      const assignmentError = await accountsApi('PATCH', { id: manager.id, action: 'store', storeId: store.id })
+      if (assignmentError) {
+        const { error: cleanupError } = await sb.from('stores').delete().eq('id', store.id)
+        const detail = cleanupError ? ` The new store could not be removed (${cleanupError.message}).` : ''
+        return setMsg(`The manager could not be assigned, so the store was not added: ${assignmentError}.${detail}`)
+      }
+    }
+    toast('Store added')
     await logAct(`Added store ${name}`)
     setOpen(false); setF({ name: '', loc: '', managerId: '' }); setMsg(''); reload()
   }
@@ -36,8 +51,12 @@ export default function Stores() {
         <thead><tr><th>Name</th><th>Location</th><th>Manager</th><th className="n">Accounts</th><th className="n">Products</th><th className="n">Remaining</th><th>Status</th><th /></tr></thead>
         <tbody>{d.stores.map((s: any) => {
           const B = d.bal.filter((b: any) => b.store_id === s.id)
-          return <tr key={s.id}><td>{s.name}</td><td>{s.location}</td><td>{s.manager_name}</td>
-            <td className="n">{d.profiles.filter((p: any) => p.store_id === s.id && p.role === 'manager').length} / 3</td>
+          const assignedManagers = d.profiles
+            .filter((p: any) => p.store_id === s.id)
+            .map((p: any) => p.full_name)
+          const managerNames = assignedManagers.join(', ') || s.manager_name || '—'
+          return <tr key={s.id}><td>{s.name}</td><td>{s.location}</td><td>{managerNames}</td>
+            <td className="n">{d.profiles.filter((p: any) => p.store_id === s.id).length} / 3</td>
             <td className="n">{B.length}</td><td className="n">{sum(B, (b: any) => Number(b.remaining))}</td>
             <td><button className="btn ghost sm" onClick={() => toggle(s)}>{s.active ? 'Active' : 'Inactive'}</button></td>
             <td><button className="btn ghost sm" onClick={() => setDel(s)}>Delete</button></td></tr>
