@@ -17,6 +17,37 @@ async function guard(): Promise<{ error: string; status: number } | { ok: true; 
 }
 async function body(req: Request) { try { return await req.json() } catch { return {} } }
 
+// List only managers belonging to the signed-in admin's company.
+export async function GET() {
+  const g = await guard(); if ('error' in g) return fail(g.error, g.status)
+  let admin; try { admin = supabaseAdmin() } catch (e: any) { return fail(e.message, 500) }
+  const { data: stores, error: storesError } = await admin.from('stores').select('id').eq('company_id', g.companyId)
+  if (storesError) return fail(storesError.message, 500)
+  const storeIds = (stores ?? []).map((store) => store.id)
+  if (storeIds.length) {
+    const { data: linkedProfiles, error: linkedError } = await admin.from('profiles')
+      .select('id, full_name, email, store_id, role, company_id, disabled')
+      .eq('role', 'manager')
+      .in('store_id', storeIds)
+    if (linkedError) return fail(linkedError.message, 500)
+    const unlinkedProfiles = (linkedProfiles ?? []).filter((profile) => profile.company_id !== g.companyId)
+    if (unlinkedProfiles.length) {
+      const { error } = await admin.from('profiles').upsert(
+        unlinkedProfiles.map((profile) => ({ ...profile, company_id: g.companyId })),
+        { onConflict: 'id' },
+      )
+      if (error) return fail(error.message, 500)
+    }
+  }
+  const { data, error } = await admin.from('profiles')
+    .select('id, full_name, email, store_id, disabled')
+    .eq('company_id', g.companyId)
+    .eq('role', 'manager')
+    .order('full_name')
+  if (error) return fail(error.message, 500)
+  return NextResponse.json({ people: data })
+}
+
 // Create a store manager account with a password the admin chose. The store must belong to the admin's company.
 export async function POST(req: Request) {
   const g = await guard(); if ('error' in g) return fail(g.error, g.status)
@@ -34,6 +65,7 @@ export async function POST(req: Request) {
   // The store goes in app_metadata, which only this server can set. The database reads it from there to link the manager to the company.
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { role: 'manager', store_id: storeId } })
   if (error) return fail(/already.*(registered|exists)|exists/i.test(error.message) ? 'An account with this email already exists.' : error.message)
+  if (!data.user) return fail('The account was created without a user record. Check Supabase Auth before trying again.', 500)
   const { error: profileError } = await admin.from('profiles').upsert({
     id: data.user.id,
     full_name: name,
@@ -41,13 +73,11 @@ export async function POST(req: Request) {
     role: 'manager',
     store_id: storeId,
     company_id: g.companyId,
-  })
+  }, { onConflict: 'id' })
   if (profileError) {
     const { error: cleanupError } = await admin.auth.admin.deleteUser(data.user.id)
-    const detail = cleanupError
-      ? ` The Auth account could not be removed (${cleanupError.message}).`
-      : ''
-    return fail(`The account was created but could not be linked to the store: ${profileError.message}.${detail}`, 500)
+    const detail = cleanupError ? ` The Auth account could not be removed (${cleanupError.message}).` : ''
+    return fail(`Could not link the new account to this company: ${profileError.message}.${detail}`, 500)
   }
   return NextResponse.json({ id: data.user?.id })
 }

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Hd } from '@/components/ui'
+import { useSettings } from '@/components/SettingsProvider'
 import { SheetTables } from '@/components/Sheet'
 import { downloadSheet, fmtT, loadSheet, logAct, qn, SHEET_LIVE, toast, useLive } from '@/lib/data'
 import { insertEntry, recordOrQueue } from '@/lib/offline/record'
@@ -11,6 +12,7 @@ import { useOnline, useOutbox } from '@/lib/offline/useOutbox'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 export default function SheetPage() {
+  const { allowGifts } = useSettings() // the admin can turn gifts off in Inventory Configuration
   const { id } = useParams<{ id: string }>()
   const online = useOnline()
   const { items } = useOutbox(id)
@@ -107,12 +109,12 @@ export default function SheetPage() {
           <label>Quantity ({p.unit})<input type="number" min="0" step="any" value={l.qty} onChange={(e) => setL({ ...l, qty: e.target.value })} /></label>
           <label>Note (optional)<input value={l.note} maxLength={120} onChange={(e) => setL({ ...l, note: e.target.value })} /></label>
           <p className="err" role="alert">{le}</p><button className="btn" onClick={addLoss}>Record</button></div>
-        <div className="panel"><h2>Record a gift</h2>
+        {allowGifts ? <div className="panel"><h2>Record a gift</h2>
           <p className="mute mt-0">For products you give away instead of selling. A gift is taken off the stock left in the store.</p>
           <label>Gifted to (name)<input value={g.to} maxLength={80} onChange={(e) => setG({ ...g, to: e.target.value })} /></label>
           <label>Quantity gifted ({p.unit})<input type="number" min="0" step="any" value={g.qty} onChange={(e) => setG({ ...g, qty: e.target.value })} /></label>
           <label>Note (optional)<input value={g.note} maxLength={120} onChange={(e) => setG({ ...g, note: e.target.value })} /></label>
-          <p className="err" role="alert">{ge}</p><button className="btn" onClick={addGift}>Record gift</button></div>
+          <p className="err" role="alert">{ge}</p><button className="btn" onClick={addGift}>Record gift</button></div> : null}
       </div>
       <div className="panel"><SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} /></div>
     </>)}

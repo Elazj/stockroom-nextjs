@@ -14,6 +14,8 @@ export default function Login() {
   const sb = supabaseBrowser()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [f, setF] = useState({ name: '', company: '', email: '', pw: '', pw2: '' })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [msg, setMsg] = useState('')
   const [good, setGood] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -88,19 +90,42 @@ export default function Login() {
         {conn === 'unreachable' && <div className={notice} role="alert">Cannot reach Supabase at <b>{host}</b>. Check that: the project is not paused (open the Supabase dashboard and Restore it); the URL has no typo, quotes or spaces; no ad blocker or firewall blocks supabase.co; and on Vercel you redeployed after setting the variables.</div>}
         {conn === 'badkey' && <div className={notice} role="alert">Supabase rejected the key. Copy the anon (or publishable) key from Project Settings, API, then update NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.</div>}
         <div className="mb-4 mt-3.5 flex gap-1 rounded-[10px] bg-bg p-1">
-          <button className={tab(!signup)} onClick={() => { setMode('login'); setMsg('') }}>Log in</button>
-          <button className={tab(signup)} onClick={() => { setMode('signup'); setMsg('') }}>Sign up</button>
+          <button className={tab(!signup)} onClick={() => { setMode('login'); setMsg(''); setShowPassword(false); setShowConfirmPassword(false) }}>Log in</button>
+          <button className={tab(signup)} onClick={() => { setMode('signup'); setMsg(''); setShowPassword(false); setShowConfirmPassword(false) }}>Sign up</button>
         </div>
         {signup && <p className="-mt-1 mb-3 text-[13px] text-mute">Create the admin account for your company. Each company has one admin, who then creates the store manager accounts from the Team page.</p>}
-        {signup && <label>Full name<input value={f.name} onChange={set('name')} autoComplete="name" /></label>}
+        {signup && <label>Full name<input value={f.name} onChange={set('name')} placeholder="Enter your full name" autoComplete="name" /></label>}
         {signup && <label>Company / business name
           <input value={f.company} onChange={set('company')} placeholder="Company / business name" maxLength={80} autoComplete="organization"
             onBlur={async () => { const c = tidy(f.company); if (c.length >= 2 && await companyTaken(c)) bad(COMPANY_EXISTS) }} /></label>}
-        <label>Email<input type="email" value={f.email} onChange={set('email')} autoComplete="email" /></label>
-        <label>Password<input type="password" value={f.pw} onChange={set('pw')} autoComplete={signup ? 'new-password' : 'current-password'} /></label>
+        <label>Email<input type="email" value={f.email} onChange={set('email')} placeholder="name@example.com" autoComplete="email" /></label>
+        <label>Password
+          <span className="relative block">
+            <input className="pr-11" type={showPassword ? 'text' : 'password'} value={f.pw} onChange={set('pw')} placeholder={signup ? 'Create a password' : 'Enter your password'} autoComplete={signup ? 'new-password' : 'current-password'} />
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 rounded border-0 bg-transparent p-1 text-mute hover:text-ink" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {showPassword
+                  ? <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>
+                  : <><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a13.7 13.7 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.7 10.7 0 0 0 4-.8" /></>}
+              </svg>
+            </button>
+          </span>
+        </label>
         {signup && <>
           <p className="-mt-1.5 mb-2.5 text-xs text-mute">At least 8 characters with upper and lower case letters, a number and a symbol.</p>
-          <label>Confirm password<input type="password" value={f.pw2} onChange={set('pw2')} autoComplete="new-password" /></label></>}
+          <label>Confirm password
+            <span className="relative block">
+              <input className="pr-11" type={showConfirmPassword ? 'text' : 'password'} value={f.pw2} onChange={set('pw2')} placeholder="Re-enter your password" autoComplete="new-password" />
+              <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 rounded border-0 bg-transparent p-1 text-mute hover:text-ink" aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'} aria-pressed={showConfirmPassword} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {showConfirmPassword
+                    ? <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>
+                    : <><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a13.7 13.7 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.7 10.7 0 0 0 4-.8" /></>}
+                </svg>
+              </button>
+            </span>
+          </label>
+        </>}
         <p role="alert" className={cx(errBase, good ? 'text-acc' : 'text-bad')}>{msg}</p>
         <button className={btn('primary', 'md', true)} disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
         {!signup && <>

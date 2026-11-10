@@ -2,12 +2,13 @@
 import { useState } from 'react'
 import { Confirm, Hd, Modal } from '@/components/ui'
 import { act, logAct, q, remove, sum, useLive } from '@/lib/data'
+import { listManagerAccounts } from '@/lib/accounts'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 export default function Stores() {
   const { data: d, err, reload } = useLive<any>(async (sb) => ({
     stores: await q(sb.from('stores').select('*').order('created_at')),
-    profiles: await q(sb.from('profiles').select('id, full_name, email, store_id, role').eq('role', 'manager').order('full_name')),
+    profiles: await listManagerAccounts(),
     bal: await q(sb.from('supply_balance').select('store_id, remaining')),
   }), ['stores', 'profiles', 'supplies', 'sheet_rows', 'losses', 'gifts'])
   const [open, setOpen] = useState(false)
@@ -29,7 +30,7 @@ export default function Stores() {
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
   return (<>
-    <Hd title="Stores and warehouses" sub={`${d.stores.length} locations`}><button className="btn" onClick={() => { setMsg(''); setOpen(true) }}>Add store</button></Hd>
+    <Hd title="Stores and warehouses" sub={`${d.stores.length} locations`}><button className="btn" onClick={() => { setMsg(''); setF({ name: '', loc: '', managerId: d.profiles[0]?.id ?? '' }); setOpen(true) }}>Add store</button></Hd>
     <div className="panel">
       {d.stores.length ? <div className="wrap"><table>
         <thead><tr><th>Name</th><th>Location</th><th>Manager</th><th className="n">Accounts</th><th className="n">Products</th><th className="n">Remaining</th><th>Status</th><th /></tr></thead>
@@ -50,7 +51,7 @@ export default function Stores() {
           <option value="">{d.profiles.length ? 'Select a team member' : 'No team members yet'}</option>
           {d.profiles.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}{p.email ? ` (${p.email})` : ''}</option>)}
         </select>
-        {!d.profiles.length && <span className="mt-1 block text-xs text-mute">Create the first manager account after adding this store.</span>}
+        {!d.profiles.length && <span className="mt-1 block text-xs text-mute">Create a manager account on the Team tab after adding this store.</span>}
       </label>
       <p className="err" role="alert">{msg}</p>
       <div className="mfoot"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" onClick={add}>Save</button></div>

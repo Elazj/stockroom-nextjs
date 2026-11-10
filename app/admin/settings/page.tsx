@@ -1,2 +1,5 @@
-import Settings from '@/components/Settings'
-export default function AdminSettings() { return <Settings role="admin" /> }
+import General from '@/components/settings/General'
+
+export default function Page() {
+  return <General />
+}

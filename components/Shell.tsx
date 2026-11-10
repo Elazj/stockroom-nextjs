@@ -4,16 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ToastHost } from '@/components/ui'
 import OfflineBar from '@/components/OfflineBar'
+import { Icon } from '@/components/icons'
 import { useLive } from '@/lib/data'
 import { cx, iconbtn } from '@/lib/tw'
 
-const NAV: Record<string, [string, string][]> = {
-  admin: [['/admin', 'Dashboard'], ['/admin/stores', 'Stores'], ['/admin/team', 'Team'], ['/admin/products', 'Products'], ['/admin/supplies', 'Supplies'], ['/admin/forecast', 'Forecast'], ['/admin/reports', 'Reports']],
-  manager: [['/manager', 'Dashboard'], ['/manager/entry', 'Daily entry'], ['/manager/forecast', 'Forecast'], ['/manager/reports', 'Reports']],
+const NAV: Record<string, [string, string, string][]> = {
+  admin: [['/admin', 'Dashboard', 'dashboard'], ['/admin/stores', 'Stores', 'stores'], ['/admin/team', 'Team', 'users'], ['/admin/products', 'Products', 'products'], ['/admin/supplies', 'Supplies', 'supplies'], ['/admin/forecast', 'Forecast', 'forecast'], ['/admin/reports', 'Reports', 'reports'], ['/admin/settings', 'Settings', 'settings']],
+  manager: [['/manager', 'Dashboard', 'dashboard'], ['/manager/entry', 'Daily entry', 'entry'], ['/manager/forecast', 'Forecast', 'forecast'], ['/manager/reports', 'Reports', 'reports'], ['/manager/settings', 'Settings', 'settings']],
 }
 
 const linkCls = (active: boolean) => cx(
-  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 no-underline transition-colors [@media(pointer:coarse)]:min-h-11',
+  'flex items-center justify-start gap-2.5 rounded-lg px-2.5 py-2 no-underline transition-colors [@media(pointer:coarse)]:min-h-11',
   active ? 'bg-accsoft font-semibold text-acc shadow-[inset_3px_0_0_var(--acc)]' : 'text-mute hover:bg-bg',
 )
 
@@ -26,7 +27,15 @@ export default function Shell({ role, name, sub, company, children }: { role: 'a
   const path = usePathname()
   const [open, setOpen] = useState(false) // side bar on small screens
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
-  const settings = `/${role}/settings`
+  const profile = `/${role}/settings/profile`
+  const [showCompany, setShowCompany] = useState(true) // Appearance > show the company name in the side bar
+
+  useEffect(() => {
+    const read = () => { try { setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1') } catch {} }
+    read()
+    window.addEventListener('stockroom-appearance', read)
+    return () => window.removeEventListener('stockroom-appearance', read)
+  }, [])
 
   useEffect(() => { setOpen(false) }, [path]) // close after choosing a tab
 
@@ -73,21 +82,23 @@ export default function Shell({ role, name, sub, company, children }: { role: 'a
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
         </div>
-        {company ? <div className="-mt-2 mb-3 truncate px-2 text-[13px] font-semibold text-mute" title={company}>{company}</div> : null}
+        {company && showCompany ? <div className="-mt-2 mb-3 truncate px-2 text-[13px] font-semibold text-mute" title={company}>{company}</div> : null}
         <nav className="flex flex-col gap-0.5">
-          {NAV[role].map(([h, l]) => (
-            <Link key={h} href={h} className={linkCls(on(h))}>{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}</Link>
+          {NAV[role].map(([h, l, ic]) => (
+            <Link key={h} href={h} className={linkCls(on(h))} aria-current={on(h) ? 'page' : undefined}>
+              <Icon name={ic} />{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}
+            </Link>
           ))}
         </nav>
-        <div className="mt-auto flex flex-col gap-1.5 border-t border-line pt-2.5 text-[13px]">
-          <div className="px-2.5"><b className="block truncate">{name}</b><span className="text-mute">{role === 'admin' ? 'Admin' : 'Store manager'}{sub ? ', ' + sub : ''}</span></div>
-          <Link href={settings} className={linkCls(on(settings))}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-              <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" />
-            </svg>
-            Settings
-          </Link>
-        </div>
+        <Link href={profile} aria-current={path === profile ? 'page' : undefined} aria-label={`${name}, account and profile`}
+          className={cx('mt-auto flex items-center gap-3 rounded-2xl border p-3 no-underline transition-colors hover:bg-accsoft', path === profile ? 'border-acc bg-accsoft' : 'border-line')}>
+          <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-accsoft text-acc"><Icon name="user" size={24} /></span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[15px]">{name}</b>
+            <span className="block truncate text-[13px] text-mute">{role === 'admin' ? 'Admin account' : 'Store manager' + (sub ? ' · ' + sub : '')}</span>
+          </span>
+          <Icon name="chevron" size={18} className="flex-none text-mute" />
+        </Link>
       </aside>
 
       <main className="mx-auto w-full min-w-0 max-w-[1200px] flex-1 px-3 pb-9 pt-3.5 min-[1500px]:max-w-[1360px] sm:px-[18px] sm:pt-[18px] lg:px-7 lg:pb-12 lg:pt-6 [&>*]:animate-fadeup">

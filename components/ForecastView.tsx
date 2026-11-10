@@ -2,9 +2,10 @@
 import { useMemo, useState } from 'react'
 import { Hd } from '@/components/ui'
 import { ForecastLines } from '@/components/charts'
+import { useSettings } from '@/components/SettingsProvider'
 import { q, useLive } from '@/lib/data'
 import {
-  HISTORY_DAYS, LEAD_DAYS, SMA_WINDOW, analyseSeries, chosenRate, dailyUsage, dayLabels, planStock, r2, type Accuracy,
+  LEAD_DAYS, SMA_WINDOW, analyseSeries, chosenRate, dailyUsage, dayLabels, planStock, r2, type Accuracy,
 } from '@/lib/forecast'
 
 type Row = {
@@ -36,15 +37,16 @@ const methodName = (w: Row['winner']) => w === 'ses' ? 'Exponential smoothing' :
 function mean(xs: number[]) { return xs.length ? xs.reduce((s, n) => s + n, 0) / xs.length : 0 }
 
 export default function ForecastView({ scope }: { scope: 'all' | 'store' }) {
+  const days = useSettings().forecastDays // set by the admin in Inventory Configuration
   const { data: d, err } = useLive<any>(async (sb) => ({
-    rows: await q(sb.from('sheet_rows').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (HISTORY_DAYS + 2) * 864e5).toISOString())),
-    losses: await q(sb.from('losses').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (HISTORY_DAYS + 2) * 864e5).toISOString())),
-    gifts: await q(sb.from('gifts').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (HISTORY_DAYS + 2) * 864e5).toISOString())),
+    rows: await q(sb.from('sheet_rows').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (days + 2) * 864e5).toISOString())),
+    losses: await q(sb.from('losses').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (days + 2) * 864e5).toISOString())),
+    gifts: await q(sb.from('gifts').select('supply_id, quantity, created_at').gte('created_at', new Date(Date.now() - (days + 2) * 864e5).toISOString())),
     bal: await q(sb.from('supply_balance').select('supply_id, product_id, store_id, remaining')),
     products: await q(sb.from('products').select('id, name, unit')),
     stores: await q(sb.from('stores').select('id, name')),
-  }), ['sheet_rows', 'losses', 'gifts', 'supplies', 'products', 'stores'])
-  const labels = useMemo(() => dayLabels(HISTORY_DAYS), [d])
+  }), ['sheet_rows', 'losses', 'gifts', 'supplies', 'products', 'stores'], `forecast-${scope}-${days}`)
+  const labels = useMemo(() => dayLabels(days), [d, days])
   const rows: Row[] = useMemo(() => {
     if (!d) return []
     const pname = new Map<string, any>(d.products.map((p: any) => [p.id, p]))
@@ -68,7 +70,7 @@ export default function ForecastView({ scope }: { scope: 'all' | 'store' }) {
     d.gifts.forEach((r: any) => add(r.supply_id, r.created_at, r.quantity))
     return [...byProduct.entries()].map(([id, slot]) => {
       const p = pname.get(id)
-      const series = dailyUsage(slot.events)
+      const series = dailyUsage(slot.events, days)
       const f = analyseSeries(series)
       const rate = chosenRate(f)
       const plan = planStock(slot.remaining, rate)
@@ -80,7 +82,7 @@ export default function ForecastView({ scope }: { scope: 'all' | 'store' }) {
         actual: series, backSma: f.backSma, backSes: f.backSes,
       }
     }).sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
-  }, [d])
+  }, [d, days])
   const [pick, setPick] = useState('')
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
@@ -97,7 +99,7 @@ export default function ForecastView({ scope }: { scope: 'all' | 'store' }) {
     <Hd title="Stock-out forecast" sub={scope === 'all' ? 'When each product is likely to run out, and which method predicted recent use more accurately.' : 'When your products are likely to run out, from this store’s supply history.'} />
     <div className="panel mb-4">
       <h2>How the two methods compare</h2>
-      <p className="mt-0">Usage is the units supplied, gifted, damaged, or missing on each calendar day for the last {HISTORY_DAYS} days. Days with no entry count as zero. A {SMA_WINDOW}-day moving average takes the mean of the last {SMA_WINDOW} days. Exponential smoothing keeps a level that moves toward each new day; its smoothing factor (between 0.1 and 0.9) is chosen on earlier days only, by lowest error. Both methods are then scored on the last stretch of days they did not use for that choice. Error is the mean absolute error (average units off per day), root mean squared error (punishes large misses), and symmetric MAPE (percent-style error that still works on zero days).</p>
+      <p className="mt-0">Usage is the units supplied, gifted, damaged, or missing on each calendar day for the last {days} days. Days with no entry count as zero. A {SMA_WINDOW}-day moving average takes the mean of the last {SMA_WINDOW} days. Exponential smoothing keeps a level that moves toward each new day; its smoothing factor (between 0.1 and 0.9) is chosen on earlier days only, by lowest error. Both methods are then scored on the last stretch of days they did not use for that choice. Error is the mean absolute error (average units off per day), root mean squared error (punishes large misses), and symmetric MAPE (percent-style error that still works on zero days).</p>
       {scored.length ? (<>
         <div className="kpis">
           <div className="panel"><b>Moving average</b><div className="big">{fmtN(smaMae)}<small> MAE</small></div><p className="mute m-0">Wins on {smaWins} of {scored.length} products. Mean RMSE {fmtN(mean(scored.map((r) => r.smaAcc!.rmse)))}, mean sMAPE {fmtN(mean(scored.map((r) => r.smaAcc!.smape)) * 100)}%.</p></div>
