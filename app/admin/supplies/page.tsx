@@ -46,7 +46,7 @@ export default function Supplies() {
           <td>{sm.get(b.store_id)}</td><td>{pm.get(b.product_id)?.name}</td><td>{pm.get(b.product_id)?.container_no}</td>
           <td className="n">{b.assigned}</td><td className="n">{b.supplied}</td><td className="n">{b.gifted}</td><td className="n">{b.damaged_in_supply}</td><td className="n">{b.missing_in_supply}</td>
           <td className="n"><b>{b.remaining}</b> {pm.get(b.product_id)?.unit}</td><td><Chip s={level(Number(b.assigned), Number(b.remaining))} /></td>
-          <td><div className="btns"><button className="btn ghost sm" onClick={() => setSheet(b.supply_id)}>Sheet</button><button className="btn ghost sm" onClick={() => startEdit(b)}>Edit</button><button className="btn ghost sm" onClick={() => setDel(b)}>Remove</button></div></td></tr>)}</tbody>
+          <td><div className="flex w-max flex-row flex-nowrap items-center gap-1.5 whitespace-nowrap"><button className="btn ghost sm w-auto shrink-0" onClick={() => setSheet(b.supply_id)}>Sheet</button><button className="btn ghost sm w-auto shrink-0" onClick={() => startEdit(b)}>Edit</button><button className="btn ghost sm w-auto shrink-0" onClick={() => setDel(b)}>Remove</button></div></td></tr>)}</tbody>
       </table></div> : <p className="mute m-0">{d.bal.length ? 'No supplies match these filters.' : 'Nothing is in a store yet. Create a product under Products, then add it to a store here.'}</p>}
     </div>
     <SupplyDialog open={adding} products={prodRows} stores={d.stores} onClose={() => setAdding(false)} onSaved={reload} />
