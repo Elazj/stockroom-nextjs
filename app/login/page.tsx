@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase/env'
+import { markSessionActive } from '@/lib/session'
 import { emailOk, pwErr } from '@/lib/validate'
 import { btn, cx, err, errBase, panel } from '@/lib/tw'
 
@@ -23,6 +24,7 @@ export default function Login() {
 
   // Checks the connection to Supabase so a "failed to fetch" always comes with a reason.
   useEffect(() => {
+    if (new URLSearchParams(location.search).get('reason') === 'idle') setMsg('You were signed out after being inactive.')
     if (!SUPABASE_URL || !SUPABASE_KEY) { setConn('missing'); return }
     fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_KEY } })
       .then((r) => setConn(r.status === 401 || r.status === 403 ? 'badkey' : 'ok'))
@@ -46,8 +48,9 @@ export default function Login() {
       const email = f.email.trim().toLowerCase()
       if (!emailOk(email)) return bad('Enter a valid email address, like name@company.com.')
       if (mode === 'login') {
-        const { error } = await sb.auth.signInWithPassword({ email, password: f.pw })
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: f.pw })
         if (error) return bad(/not confirmed/i.test(error.message) ? 'Confirm your email first. Check your inbox.' : NET.test(error.message) ? error.message : /banned|disabled/i.test(error.message) ? 'This account has been disabled. Ask your admin.' : 'Email or password is incorrect.')
+        if (data.user?.id) markSessionActive(data.user.id)
         location.href = '/'
         return
       }

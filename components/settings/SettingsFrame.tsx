@@ -11,7 +11,7 @@ export type Role = 'admin' | 'manager'
 export const MENU: Record<Role, [string, string, string][]> = {
   admin: [
     ['general', 'General Settings', 'sliders'], ['users', 'User Management', 'users'], ['roles', 'Roles & Permissions', 'shield'],
-    ['inventory', 'Inventory Configuration', 'warehouse'], ['notifications', 'Notifications', 'bell'], ['appearance', 'Appearance', 'palette'],
+    ['inventory', 'Inventory Configuration', 'warehouse'], ['security', 'Security', 'shield'], ['notifications', 'Notifications', 'bell'], ['appearance', 'Appearance', 'palette'],
     ['backup', 'Backup & Restore', 'database'], ['activity', 'Activity Logs', 'history'], ['about', 'About System', 'info'],
   ],
   manager: [['notifications', 'Notifications', 'bell'], ['appearance', 'Appearance', 'palette'], ['activity', 'My Activity', 'history'], ['about', 'About System', 'info']],

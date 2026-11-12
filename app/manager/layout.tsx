@@ -14,7 +14,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   const c = Array.isArray(co) ? co[0] : co
   const company: string = c?.name ?? ''
   return (
-    <SettingsProvider value={c?.settings}>
+    <SettingsProvider value={c?.settings} userId={user?.id ?? ''}>
     <Shell role="manager" name={p?.full_name ?? 'Manager'} sub={storeName} company={company}>
       {p?.store_id ? children : (
         <div className="panel max-w-[460px]">

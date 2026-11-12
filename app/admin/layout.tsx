@@ -11,5 +11,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const co: any = (p as any)?.companies
   const c = Array.isArray(co) ? co[0] : co
   const company: string = c?.name ?? ''
-  return <SettingsProvider value={c?.settings}><Shell role="admin" name={p?.full_name ?? 'Admin'} company={company}>{children}</Shell></SettingsProvider>
+  return <SettingsProvider value={c?.settings} userId={user?.id ?? ''}><Shell role="admin" name={p?.full_name ?? 'Admin'} company={company}>{children}</Shell></SettingsProvider>
 }
