@@ -23,7 +23,7 @@ function OpenReports() {
   return data ? <span className="ml-auto rounded-full bg-bad px-[7px] text-[11px] text-white">{data}</span> : null
 }
 
-export default function Shell({ role, name, sub, company, children }: { role: 'admin' | 'manager'; name: string; sub?: string; company?: string; children: ReactNode }) {
+export default function Shell({ role, name, sub, company, avatarUrl, children }: { role: 'admin' | 'manager'; name: string; sub?: string; company?: string; avatarUrl?: string; children: ReactNode }) {
   const path = usePathname()
   const [open, setOpen] = useState(false) // side bar on small screens
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
@@ -92,7 +92,9 @@ export default function Shell({ role, name, sub, company, children }: { role: 'a
         </nav>
         <Link href={profile} aria-current={path === profile ? 'page' : undefined} aria-label={`${name}, account and profile`}
           className={cx('mt-auto flex items-center gap-3 rounded-2xl border p-3 no-underline transition-colors hover:bg-accsoft', path === profile ? 'border-acc bg-accsoft' : 'border-line')}>
-          <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-accsoft text-acc"><Icon name="user" size={24} /></span>
+          {avatarUrl
+            ? <img src={avatarUrl} alt="" className="h-11 w-11 flex-none rounded-full object-cover" />
+            : <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-accsoft text-acc"><Icon name="user" size={24} /></span>}
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[15px]">{name}</b>
             <span className="block truncate text-[13px] text-mute">{role === 'admin' ? 'Admin account' : 'Store manager' + (sub ? ' · ' + sub : '')}</span>

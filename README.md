@@ -7,13 +7,14 @@ Many companies can use one deployment: each company has one admin and its own se
 ## Set up (new Supabase project)
 1. Create a project at supabase.com.
 2. SQL editor: paste all of `supabase/schema.sql` and run it.
-   Already ran an older schema? Run `migration-002.sql` through `migration-012.sql` (each once, only if not yet run, in that order) in new query tabs.
+   Already ran an older schema? Run `migration-002.sql` through `migration-013.sql` (each once, only if not yet run, in that order) in new query tabs.
    `migration-007.sql` adds companies, per-company data separation, "date arrived" and gifts. Your existing data moves into one company called "My company"
    (rename it with the one-line `update` shown at the top of that file). Do not run `migration-002`, `003` or `004` again after 007.
    `migration-008.sql` fixes recursive row-security checks when adding a product to a store.
    `migration-009.sql` repairs existing manager profiles that are missing their company link.
    `migration-011.sql` adds the settings functions, including the admin-only company-name edit in General Settings. Run it on existing databases before using those settings.
    If `migration-011.sql` was already run before company-name editing was available, run `migration-012.sql` to install or refresh that function.
+   `migration-013.sql` adds profile pictures, per-user Storage permissions, and keeps profile emails in sync after confirmed auth email changes.
    Every admin tab shows "permission denied"? Run `repair.sql` once, then reload. (On an older database run `repair.sql` first, then `migration-007.sql`.)
 3. Authentication > Providers: keep **Email** on and turn on **Confirm email**. Optional: turn on **Google**.
 4. Authentication > Policies: minimum password length 8, require lower case, upper case, digits and symbols.
@@ -46,6 +47,7 @@ The browser cannot reach Supabase. The login page shows a red notice that says w
   (otherwise it shows "Account/company name already exists"; capital letters and extra spaces are ignored). A company has exactly one admin. The company name is shown
   on the admin and manager dashboards and in the side bar. Store managers cannot sign up themselves: the admin creates their accounts on the Team page, and they belong to the admin's company.
 - Data separation: every store, product, supply, entry, gift, report and account belongs to one company, and the database (row level security) only lets people see their own company's data.
+- Admins can update their sign-in email from Account & Profile (email confirmation may be required) and rename the company in Admin Settings > General. Every user can upload their own profile picture from Account & Profile.
   "Reset all data" in Settings clears only the admin's own company.
 - Admin: Dashboard, Stores, Team (create manager accounts, set passwords, assign stores, disable or delete), Products (each product records its **date arrived**), Supplies, Forecast, Reports, Settings (profile, theme, password, sign out, reset all data).
 - Store manager (up to 3 accounts per store): Dashboard, Daily entry (sheets with supplies, **gifts**, damaged or missing; CSV download, offline queue), Forecast, Reports, Settings.

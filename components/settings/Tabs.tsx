@@ -5,6 +5,7 @@ import Profile from './Profile'
 import General from './General'
 import Roles from './Roles'
 import Inventory from './Inventory'
+import Security from './Security'
 import Notifications from './Notifications'
 import Appearance from './Appearance'
 import Backup from './Backup'
@@ -25,6 +26,7 @@ export default function SettingsTab({ role }: { role: Role }) {
   if (admin && tab === 'users') return <TeamManager embedded />
   if (admin && tab === 'roles') return <Roles />
   if (admin && tab === 'inventory') return <Inventory />
+  if (admin && tab === 'security') return <Security />
   if (admin && tab === 'backup') return <Backup />
   return <p className="mute m-0">This settings page does not exist.</p>
 }

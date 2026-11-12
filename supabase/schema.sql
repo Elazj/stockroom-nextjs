@@ -22,6 +22,7 @@ create table profiles (
   id uuid primary key references auth.users on delete cascade,
   full_name text not null,
   email text,
+  avatar_path text,
   disabled boolean not null default false,
   role text not null default 'manager' check (role in ('admin','manager')),
   store_id uuid references stores on delete set null,
@@ -211,6 +212,15 @@ begin
 end $$;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
 
+create function sync_profile_email() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update profiles set email = new.email where id = new.id;
+  return new;
+end $$;
+create trigger on_auth_user_email_updated after update of email on auth.users
+for each row execute function sync_profile_email();
+
 -- The sign-up form asks this before sending anything (callable before login)
 create function company_name_taken(p_name text) returns boolean language sql stable security definer set search_path = public
 as $$ select exists (
@@ -297,11 +307,37 @@ create policy rep_admin     on reports for update to authenticated using ((selec
 create policy log_read      on activity_log for select to authenticated using (actor = auth.uid() or ((select is_admin()) and company_id = (select my_company())));
 create policy log_add       on activity_log for insert to authenticated with check (actor = auth.uid() and company_id = (select my_company()));
 
+-- Public profile images; each signed-in user can only upload to their own folder.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+create policy avatar_upload_own on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy avatar_read_own on storage.objects for select to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy avatar_replace_own on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
 -- Table access (RLS still decides which rows). Without this, PostgREST returns "permission denied".
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant select on supply_balance to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+
+create function update_my_avatar(p_avatar_path text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Not signed in'; end if;
+  if p_avatar_path is not null and p_avatar_path <> (auth.uid()::text || '/avatar') then
+    raise exception 'Invalid profile picture path';
+  end if;
+  update profiles set avatar_path = p_avatar_path where id = auth.uid();
+end $$;
+grant execute on function update_my_avatar(text) to authenticated;
 
 -- Live updates
 alter publication supabase_realtime add table supplies, sheet_rows, losses, gifts, reports, activity_log, products, stores, profiles;

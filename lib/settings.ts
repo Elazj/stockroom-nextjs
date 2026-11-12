@@ -13,11 +13,12 @@ export type CompanySettings = {
   forecastDays: number    // days of history the forecast looks at
   requireArrival: boolean // the date arrived must be entered on every product
   allowGifts: boolean     // store managers can record gifts
+  sessionTimeoutMinutes: number
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
   currency: 'USD', dateFormat: 'medium', timeZone: '', language: 'en',
-  lowStockPct: 20, defaultUnit: 'pieces', forecastDays: 56, requireArrival: true, allowGifts: true,
+  lowStockPct: 20, defaultUnit: 'pieces', forecastDays: 56, requireArrival: true, allowGifts: true, sessionTimeoutMinutes: 30,
 }
 
 const clamp = (v: unknown, min: number, max: number, d: number) => {
@@ -38,6 +39,7 @@ export function normalizeSettings(raw: any): CompanySettings {
     forecastDays: clamp(r.forecastDays, 28, 90, d.forecastDays),
     requireArrival: typeof r.requireArrival === 'boolean' ? r.requireArrival : d.requireArrival,
     allowGifts: typeof r.allowGifts === 'boolean' ? r.allowGifts : d.allowGifts,
+    sessionTimeoutMinutes: [5, 15, 30, 60, 120].includes(Number(r.sessionTimeoutMinutes)) ? Number(r.sessionTimeoutMinutes) : d.sessionTimeoutMinutes,
   }
 }
 
