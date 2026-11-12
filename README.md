@@ -7,7 +7,7 @@ Many companies can use one deployment: each company has one admin and its own se
 ## Set up (new Supabase project)
 1. Create a project at supabase.com.
 2. SQL editor: paste all of `supabase/schema.sql` and run it.
-   Already ran an older schema? Run `migration-002.sql` through `migration-013.sql` (each once, only if not yet run, in that order) in new query tabs.
+   Already ran an older schema? Run `migration-002.sql` through `migration-014.sql` (each once, only if not yet run, in that order) in new query tabs.
    `migration-007.sql` adds companies, per-company data separation, "date arrived" and gifts. Your existing data moves into one company called "My company"
    (rename it with the one-line `update` shown at the top of that file). Do not run `migration-002`, `003` or `004` again after 007.
    `migration-008.sql` fixes recursive row-security checks when adding a product to a store.
@@ -15,6 +15,7 @@ Many companies can use one deployment: each company has one admin and its own se
    `migration-011.sql` adds the settings functions, including the admin-only company-name edit in General Settings. Run it on existing databases before using those settings.
    If `migration-011.sql` was already run before company-name editing was available, run `migration-012.sql` to install or refresh that function.
    `migration-013.sql` adds profile pictures, per-user Storage permissions, and keeps profile emails in sync after confirmed auth email changes.
+   `migration-014.sql` enables cache-safe profile picture replacements. Run it on existing databases before changing a profile picture.
    Every admin tab shows "permission denied"? Run `repair.sql` once, then reload. (On an older database run `repair.sql` first, then `migration-007.sql`.)
 3. Authentication > Providers: keep **Email** on and turn on **Confirm email**. Optional: turn on **Google**.
 4. Authentication > Policies: minimum password length 8, require lower case, upper case, digits and symbols.

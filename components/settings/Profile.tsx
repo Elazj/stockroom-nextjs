@@ -75,7 +75,7 @@ export default function Profile({ role }: { role: Role }) {
       const store = p.store_id ? (await q(sb.from('stores').select('name').eq('id', p.store_id).single())).name : ''
       const co = p.companies
       const path = p.avatar_path ?? ''
-      setMe({ email: user?.email ?? '', pendingEmail: user?.new_email ?? '', store, company: (Array.isArray(co) ? co[0]?.name : co?.name) ?? '' })
+      setMe({ email: user?.email ?? '', pendingEmail: user?.new_email ?? '', store, avatarPath: path, company: (Array.isArray(co) ? co[0]?.name : co?.name) ?? '' })
       setName(p.full_name ?? '')
       setEmail(user?.new_email ?? user?.email ?? '')
       if (path) setAvatarUrl(sb.storage.from('avatars').getPublicUrl(path).data.publicUrl)
@@ -136,14 +136,24 @@ export default function Profile({ role }: { role: Role }) {
       const { data: { user }, error: userError } = await sb.auth.getUser()
       if (userError) return setPhotoMsg(friendly(userError.message))
       if (!user) return setPhotoMsg('Sign in again before uploading a profile picture.')
-      const path = `${user.id}/avatar`
+      const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp'
+      const path = `${user.id}/avatar/${crypto.randomUUID()}.${extension}`
       const { error: uploadError } = await sb.storage.from('avatars').upload(path, file, {
-        cacheControl: '3600', contentType: file.type, upsert: true,
+        cacheControl: '3600', contentType: file.type, upsert: false,
       })
       if (uploadError) return setPhotoMsg(friendly(uploadError.message))
       const { error } = await sb.rpc('update_my_avatar', { p_avatar_path: path })
-      if (error) return setPhotoMsg(friendly(error.message))
-      setAvatarUrl(`${sb.storage.from('avatars').getPublicUrl(path).data.publicUrl}?v=${Date.now()}`)
+      if (error) {
+        const { error: cleanupError } = await sb.storage.from('avatars').remove([path])
+        return setPhotoMsg(friendly(error.message) + (cleanupError ? ` The new image could not be removed from storage: ${friendly(cleanupError.message)}` : ''))
+      }
+      const previousPath = me.avatarPath as string
+      setMe({ ...me, avatarPath: path })
+      setAvatarUrl(sb.storage.from('avatars').getPublicUrl(path).data.publicUrl)
+      if (previousPath && previousPath !== path) {
+        const { error: cleanupError } = await sb.storage.from('avatars').remove([previousPath])
+        if (cleanupError) setPhotoMsg(`Profile picture updated, but the previous image could not be removed from storage: ${friendly(cleanupError.message)}`)
+      }
       toast('Profile picture updated')
       router.refresh()
     } catch (error) {
@@ -161,11 +171,12 @@ export default function Profile({ role }: { role: Role }) {
       const { data: { user }, error: userError } = await sb.auth.getUser()
       if (userError) return setPhotoMsg(friendly(userError.message))
       if (!user) return setPhotoMsg('Sign in again before removing your profile picture.')
-      const path = `${user.id}/avatar`
+      const path = me.avatarPath as string
       const { error } = await sb.rpc('update_my_avatar', { p_avatar_path: null })
       if (error) return setPhotoMsg(friendly(error.message))
+      setMe({ ...me, avatarPath: '' })
       setAvatarUrl('')
-      const { error: removeError } = await sb.storage.from('avatars').remove([path])
+      const { error: removeError } = path ? await sb.storage.from('avatars').remove([path]) : { error: null }
       if (removeError) {
         setPhotoMsg(`Your profile picture was removed, but its stored image could not be deleted: ${friendly(removeError.message)}`)
       } else {
