@@ -321,6 +321,8 @@ create policy avatar_read_own on storage.objects for select to authenticated
 create policy avatar_replace_own on storage.objects for update to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
   with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy avatar_delete_own on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 -- Table access (RLS still decides which rows). Without this, PostgREST returns "permission denied".
 grant usage on schema public to anon, authenticated;
