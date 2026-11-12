@@ -153,6 +153,32 @@ export default function Profile({ role }: { role: Role }) {
     }
   }
 
+  async function removePhoto() {
+    setPhotoMsg('')
+    setPhotoBusy(true)
+    try {
+      const sb = supabaseBrowser()
+      const { data: { user }, error: userError } = await sb.auth.getUser()
+      if (userError) return setPhotoMsg(friendly(userError.message))
+      if (!user) return setPhotoMsg('Sign in again before removing your profile picture.')
+      const path = `${user.id}/avatar`
+      const { error } = await sb.rpc('update_my_avatar', { p_avatar_path: null })
+      if (error) return setPhotoMsg(friendly(error.message))
+      setAvatarUrl('')
+      const { error: removeError } = await sb.storage.from('avatars').remove([path])
+      if (removeError) {
+        setPhotoMsg(`Your profile picture was removed, but its stored image could not be deleted: ${friendly(removeError.message)}`)
+      } else {
+        toast('Profile picture removed')
+      }
+      router.refresh()
+    } catch (error) {
+      setPhotoMsg(error instanceof Error ? friendly(error.message) : 'Could not remove the profile picture.')
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
   if (!me) return <p className="mute m-0">Loading…</p>
   return (<>
     <TabHead title="Account & Profile" desc="Your account and sign-in details." />
@@ -162,9 +188,10 @@ export default function Profile({ role }: { role: Role }) {
         : <span className="grid h-20 w-20 place-items-center rounded-full bg-accsoft text-acc"><span className="text-2xl font-semibold">{name.trim().charAt(0).toUpperCase() || '?'}</span></span>}
       <div>
         <label className="btn ghost inline-flex cursor-pointer items-center">
-          {photoBusy ? 'Uploading…' : 'Upload profile picture'}
+          {photoBusy ? 'Working…' : avatarUrl ? 'Change profile picture' : 'Upload profile picture'}
           <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy} onChange={uploadPhoto} />
         </label>
+        {avatarUrl ? <button className="btn ghost ml-2" disabled={photoBusy} onClick={removePhoto}>Remove profile picture</button> : null}
         <p className="mb-0 mt-1 text-xs text-mute">JPG, PNG, or WebP; up to 5 MB.</p>
         {photoMsg ? <p className="err mb-0 mt-1" role="alert">{photoMsg}</p> : null}
       </div>

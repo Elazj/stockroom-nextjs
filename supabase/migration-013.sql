@@ -26,6 +26,11 @@ for update to authenticated
 using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
 with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
+drop policy if exists avatar_delete_own on storage.objects;
+create policy avatar_delete_own on storage.objects
+for delete to authenticated
+using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
 create or replace function public.update_my_avatar(p_avatar_path text)
 returns void
 language plpgsql security definer set search_path = public as $$
