@@ -56,7 +56,7 @@ export default function AdminDashboard() {
       <Kpi icon="layers" label="Units in stores" value={sum(B, (b) => Number(b.assigned))} />
       <Kpi icon="send" label="Supplied to customers" value={sum(B, (b) => Number(b.supplied))} />
       <Kpi icon="gift" label="Gifted" value={sum(B, (b) => Number(b.gifted))} />
-      <Kpi icon="alert" label="Damaged during offload" value={damagedOffload} tone={damagedOffload ? 'warn' : undefined} />
+      <Kpi icon="alert" label="Damaged on offload" value={damagedOffload} tone={damagedOffload ? 'warn' : undefined} />
       <Kpi icon="alert" label="Damaged during supply" value={damagedSupply} tone={damagedSupply ? 'warn' : undefined} />
       <Kpi icon="alert" label="Missing on offload" value={missingOffload} tone={missingOffload ? 'warn' : undefined} />
       <Kpi icon="alert" label="Missing during supply" value={missingSupply} tone={missingSupply ? 'warn' : undefined} />
